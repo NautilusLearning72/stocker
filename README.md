@@ -1,0 +1,2 @@
+# stocker
+Algo Trading app
