@@ -1,0 +1,198 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stocker-postgres
+    environment:
+      POSTGRES_DB: stocker
+      POSTGRES_USER: stocker
+      POSTGRES_PASSWORD: dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stocker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: stocker-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stocker-api
+    command: uvicorn stocker.api.main:app --reload --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stocker:dev@postgres:5432/stocker
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stocker-celery-beat
+    command: celery -A stocker.scheduler.celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stocker:dev@postgres:5432/stocker
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  signal-consumer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stocker-signal-consumer
+    command: python -m stocker.stream_consumers.signal_consumer
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stocker:dev@postgres:5432/stocker
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  portfolio-consumer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stocker-portfolio-consumer
+    command: python -m stocker.stream_consumers.portfolio_consumer
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stocker:dev@postgres:5432/stocker
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  order-consumer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stocker-order-consumer
+    command: python -m stocker.stream_consumers.order_consumer
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stocker:dev@postgres:5432/stocker
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  broker-consumer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stocker-broker-consumer
+    command: python -m stocker.stream_consumers.broker_consumer
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stocker:dev@postgres:5432/stocker
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  ledger-consumer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stocker-ledger-consumer
+    command: python -m stocker.stream_consumers.ledger_consumer
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stocker:dev@postgres:5432/stocker
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  monitor-consumer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stocker-monitor-consumer
+    command: python -m stocker.stream_consumers.monitor_consumer
+    environment:
+      DATABASE_URL: postgresql+asyncpg://stocker:dev@postgres:5432/stocker
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

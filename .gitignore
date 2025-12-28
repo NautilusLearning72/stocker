@@ -1,0 +1,110 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.poetry/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Docker
+.dockerignore
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Alembic
+alembic/versions/*.pyc
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Backtest Results
+backend/tests/backtests/*.html
+backend/tests/backtests/*.csv
+backend/tests/backtests/*.png
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Node (Frontend)
+frontend/stocker-ui/node_modules/
+frontend/stocker-ui/dist/
+frontend/stocker-ui/.angular/
+frontend/stocker-ui/npm-debug.log*
+frontend/stocker-ui/yarn-debug.log*
+frontend/stocker-ui/yarn-error.log*
+
+# AWS
+.aws/
+
+# Secrets
+secrets/
+*.key
+*.crt
