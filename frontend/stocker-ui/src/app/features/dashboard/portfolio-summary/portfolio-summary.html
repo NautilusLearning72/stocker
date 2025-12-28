@@ -1,0 +1,16 @@
+<div class="summary-grid">
+    <mat-card *ngFor="let metric of metrics" class="metric-card">
+        <mat-card-header>
+            <mat-card-title>{{ metric.label }}</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+            <div class="value">
+                <ng-container [ngSwitch]="metric.format">
+                    <span *ngSwitchCase="'currency'">{{ metric.value | currency }}</span>
+                    <span *ngSwitchCase="'percent'">{{ metric.value }}%</span>
+                    <span *ngSwitchDefault>{{ metric.value }}</span>
+                </ng-container>
+            </div>
+        </mat-card-content>
+    </mat-card>
+</div>

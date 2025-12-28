@@ -136,9 +136,11 @@ class SignalConsumer(BaseStreamConsumer):
         logger.info(f"Published signal for {symbol}")
 
 if __name__ == "__main__":
-    consumer = SignalConsumer()
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(consumer.start())
-    except KeyboardInterrupt:
-        loop.run_until_complete(consumer.stop())
+    async def main():
+        consumer = SignalConsumer()
+        try:
+            await consumer.start()
+        except KeyboardInterrupt:
+            await consumer.stop()
+    
+    asyncio.run(main())

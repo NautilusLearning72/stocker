@@ -1,0 +1,32 @@
+.list-container {
+    padding: 16px;
+}
+
+table {
+    width: 100%;
+}
+
+.pos {
+    color: green;
+}
+
+.neg {
+    color: red;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.8em;
+
+    &.long {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    &.short {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+}

@@ -1015,3 +1015,20 @@ Phase 10: Production Launch
 | Market Data Task | `stocker/tasks/market_data.py` |
 | Celery App | `stocker/scheduler/celery_app.py` |
 | FastAPI Main | `stocker/api/main.py` |
+
+
+🔌 Live Paper Trading Test
+Configure Alpaca paper trading API keys in .env
+Trigger market data ingestion to run the full pipeline end-to-end
+Verify orders appear in paper account
+📈 Add Equity Curve Chart
+Integrate ApexCharts into Dashboard
+Fetch historical NAV from backend
+Display interactive equity curve
+🐳 Deployment Setup
+Containerize the Angular frontend
+Create a production Docker Compose profile
+Add Nginx reverse proxy for unified access
+🧪 Add Unit/Integration Tests
+Pytest for backend routers
+Angular Karma tests for components

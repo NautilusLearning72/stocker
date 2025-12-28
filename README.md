@@ -140,6 +140,48 @@ stocker/
    poetry run python -m stocker.stream_consumers.signal_consumer
    ```
 
+### Run the Full Trading Pipeline
+
+The easiest way to run the complete pipeline is with the launcher script:
+
+```bash
+cd backend
+./scripts/run_pipeline.sh
+```
+
+This script will:
+1. ✅ Start PostgreSQL and Redis (via Docker)
+2. ✅ Run database migrations
+3. ✅ Start all 5 stream consumers in the background
+4. ✅ Trigger market data ingestion for default universe
+5. ✅ Tail logs from all consumers
+
+**Manual Pipeline Steps** (alternative):
+
+```bash
+# Terminal 1: Start consumers individually
+poetry run python -m stocker.stream_consumers.signal_consumer
+poetry run python -m stocker.stream_consumers.portfolio_consumer
+poetry run python -m stocker.stream_consumers.order_consumer
+poetry run python -m stocker.stream_consumers.broker_consumer
+poetry run python -m stocker.stream_consumers.ledger_consumer
+
+# Terminal 2: Trigger ingestion
+poetry run python -c "
+from stocker.services.market_data_service import MarketDataService
+from stocker.core.database import AsyncSessionLocal
+import asyncio
+
+async def ingest():
+    async with AsyncSessionLocal() as session:
+        service = MarketDataService(session)
+        symbols = ['AAPL', 'MSFT', 'SPY']
+        await service.ingest_daily_bars(symbols, lookback_days=30)
+
+asyncio.run(ingest())
+"
+```
+
 ## Development Workflow
 
 ### Running Tests
@@ -196,6 +238,16 @@ poetry run python -m stocker.backtesting.cli \
   --end-date 2024-12-31 \
   --initial-capital 100000 \
   --output backtest_results.html
+```
+
+### End-to-End Verification
+
+To run the integrated pipeline test (mocking market data -> signal -> portfolio -> order -> broker -> ledger):
+
+```bash
+# Requires Docker containers (Redis, Postgres) to be running
+# In backend/ directory:
+poetry run python scripts/verify_e2e.py
 ```
 
 ## API Documentation
@@ -262,10 +314,10 @@ For the detailed, component-by-component implementation plan, see **[implementat
 
 **Current Progress**:
 - ✅ Phase 1: Foundation (monorepo, Docker, config)
-- ⬜ Phase 2: Core Strategy Logic
-- ⬜ Phase 3: Data Infrastructure
-- ⬜ Phase 4: Stream Consumers
-- ⬜ Phase 5: Trading Pipeline
+- ✅ Phase 2: Core Strategy Logic
+- ✅ Phase 3: Data Infrastructure
+- ✅ Phase 4: Stream Consumers
+- ✅ Phase 5: Trading Pipeline (Verification & Launch)
 - ⬜ Phase 6: API Layer
 - ⬜ Phase 7: Frontend
 - ⬜ Phase 8: Deployment & CI/CD

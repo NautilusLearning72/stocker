@@ -1,0 +1,19 @@
+<div class="health-container">
+    <h2>System Status</h2>
+
+    <div class="grid">
+        <mat-card *ngFor="let service of services" class="status-card" [class]="service.status">
+            <mat-card-header>
+                <mat-icon mat-card-avatar *ngIf="service.status === 'healthy'"
+                    class="icon-healthy">check_circle</mat-icon>
+                <mat-icon mat-card-avatar *ngIf="service.status === 'warning'" class="icon-warning">warning</mat-icon>
+                <mat-icon mat-card-avatar *ngIf="service.status === 'error'" class="icon-error">error</mat-icon>
+                <mat-card-title>{{ service.name }}</mat-card-title>
+                <mat-card-subtitle>{{ service.lastHeartbeat }}</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content *ngIf="service.message">
+                <p>{{ service.message }}</p>
+            </mat-card-content>
+        </mat-card>
+    </div>
+</div>

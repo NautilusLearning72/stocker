@@ -1,0 +1,33 @@
+<table mat-table [dataSource]="dataSource" class="mat-elevation-z2 hover-table">
+
+    <!-- Symbol Column -->
+    <ng-container matColumnDef="symbol">
+        <th mat-header-cell *matHeaderCellDef> Symbol </th>
+        <td mat-cell *matCellDef="let element"> {{element.symbol}} </td>
+    </ng-container>
+
+    <!-- Qty Column -->
+    <ng-container matColumnDef="qty">
+        <th mat-header-cell *matHeaderCellDef> Qty </th>
+        <td mat-cell *matCellDef="let element"> {{element.qty}} </td>
+    </ng-container>
+
+    <!-- Cost Basis Column -->
+    <ng-container matColumnDef="cost_basis">
+        <th mat-header-cell *matHeaderCellDef> Cost Basis </th>
+        <td mat-cell *matCellDef="let element"> {{element.cost_basis | currency}} </td>
+    </ng-container>
+
+    <!-- Market Value Column -->
+    <ng-container matColumnDef="market_value">
+        <th mat-header-cell *matHeaderCellDef> Market Value </th>
+        <td mat-cell *matCellDef="let element"> {{element.market_value | currency}} </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+</table>
+
+<div *ngIf="dataSource.length === 0" class="no-data">
+    No holdings yet
+</div>

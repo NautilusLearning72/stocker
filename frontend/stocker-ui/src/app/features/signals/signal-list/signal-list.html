@@ -1,0 +1,51 @@
+<div class="list-container">
+    <h2>Daily Signals</h2>
+
+    <table mat-table [dataSource]="dataSource" class="mat-elevation-z2">
+        <!-- Date Column -->
+        <ng-container matColumnDef="date">
+            <th mat-header-cell *matHeaderCellDef> Date </th>
+            <td mat-cell *matCellDef="let element"> {{element.date}} </td>
+        </ng-container>
+
+        <!-- Symbol Column -->
+        <ng-container matColumnDef="symbol">
+            <th mat-header-cell *matHeaderCellDef> Symbol </th>
+            <td mat-cell *matCellDef="let element"> {{element.symbol}} </td>
+        </ng-container>
+
+        <!-- Momentum Column -->
+        <ng-container matColumnDef="momentum">
+            <th mat-header-cell *matHeaderCellDef> Momentum (126d) </th>
+            <td mat-cell *matCellDef="let element" [class.pos]="element.momentum > 0"
+                [class.neg]="element.momentum < 0">
+                {{element.momentum | percent:'1.1-1'}}
+            </td>
+        </ng-container>
+
+        <!-- Volatility Column -->
+        <ng-container matColumnDef="volatility">
+            <th mat-header-cell *matHeaderCellDef> Vol (Ann) </th>
+            <td mat-cell *matCellDef="let element"> {{element.volatility | percent:'1.1-1'}} </td>
+        </ng-container>
+
+        <!-- Direction Column -->
+        <ng-container matColumnDef="direction">
+            <th mat-header-cell *matHeaderCellDef> Direction </th>
+            <td mat-cell *matCellDef="let element">
+                <span class="badge" [class.long]="element.direction === 1" [class.short]="element.direction === -1">
+                    {{ element.direction === 1 ? 'LONG' : (element.direction === -1 ? 'SHORT' : 'FLAT') }}
+                </span>
+            </td>
+        </ng-container>
+
+        <!-- Weight Column -->
+        <ng-container matColumnDef="weight">
+            <th mat-header-cell *matHeaderCellDef> Target Wgt </th>
+            <td mat-cell *matCellDef="let element"> {{element.weight | percent:'1.1-1'}} </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+</div>

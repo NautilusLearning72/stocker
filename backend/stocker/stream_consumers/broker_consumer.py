@@ -161,9 +161,11 @@ class BrokerConsumer(BaseStreamConsumer):
         logger.info(f"Filled {side} {filled_qty} {symbol} @ {execution_price}")
 
 if __name__ == "__main__":
-    consumer = BrokerConsumer()
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(consumer.start())
-    except KeyboardInterrupt:
-        loop.run_until_complete(consumer.stop())
+    async def main():
+        consumer = BrokerConsumer()
+        try:
+            await consumer.start()
+        except KeyboardInterrupt:
+            await consumer.stop()
+    
+    asyncio.run(main())

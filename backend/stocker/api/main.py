@@ -66,8 +66,15 @@ async def root() -> dict[str, str]:
     }
 
 
-# TODO: Include routers when created
-# app.include_router(portfolio_router, prefix="/api/v1/portfolio", tags=["portfolio"])
-# app.include_router(signals_router, prefix="/api/v1/signals", tags=["signals"])
-# app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
+from stocker.api.sse import router as sse_router
+from stocker.api.portfolio import router as portfolio_router
+from stocker.api.signals import router as signals_router
+from stocker.api.orders import router as orders_router
+
+app.include_router(sse_router, prefix="/api/v1", tags=["stream"])
+app.include_router(portfolio_router, prefix="/api/v1/portfolio", tags=["portfolio"])
+app.include_router(signals_router, prefix="/api/v1/signals", tags=["signals"])
+app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
+
+# TODO: Include admin router when created
 # app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
