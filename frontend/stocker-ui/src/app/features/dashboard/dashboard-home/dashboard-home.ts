@@ -2,13 +2,15 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { StreamService } from '../../../core/services/stream';
-import { PortfolioService, PortfolioState, Holding } from '../../../core/services/portfolio';
+import { PortfolioService, Holding } from '../../../core/services/portfolio';
+import { OrdersService, Order } from '../../../core/services/orders';
 import { PortfolioSummary } from '../portfolio-summary/portfolio-summary';
 import { HoldingsTable } from '../holdings-table/holdings-table';
+import { OrdersTable } from '../orders-table/orders-table';
 
 @Component({
   selector: 'app-dashboard-home',
-  imports: [CommonModule, PortfolioSummary, HoldingsTable],
+  imports: [CommonModule, PortfolioSummary, HoldingsTable, OrdersTable],
   templateUrl: './dashboard-home.html',
   styleUrl: './dashboard-home.scss',
 })
@@ -21,12 +23,14 @@ export class DashboardHome implements OnInit, OnDestroy {
   ];
 
   holdings: Holding[] = [];
+  orders: Order[] = [];
 
   private sub?: Subscription;
 
   constructor(
     private streamService: StreamService,
     private portfolioService: PortfolioService,
+    private ordersService: OrdersService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -66,6 +70,15 @@ export class DashboardHome implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
       error: (err) => console.error('Failed to load holdings:', err)
+    });
+
+    // Get orders
+    this.ordersService.getOrders().subscribe({
+      next: (orders) => {
+        this.orders = [...orders];
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Failed to load orders:', err)
     });
   }
 

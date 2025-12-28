@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(wc:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(curl:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker exec:*)",
+      "Bash(poetry run python:*)",
+      "Bash(poetry show:*)",
+      "Bash(mkdir:*)"
     ]
   }
 }

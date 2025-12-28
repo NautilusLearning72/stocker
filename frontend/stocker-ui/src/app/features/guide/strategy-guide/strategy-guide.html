@@ -1,0 +1,279 @@
+<div class="guide-container">
+    <h1>Strategy Guide</h1>
+    <p class="subtitle">Volatility-Targeted Trend-Following System</p>
+
+    <mat-accordion multi>
+        <!-- Strategy Overview -->
+        <mat-expansion-panel expanded>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>info</mat-icon>
+                    Strategy Overview
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    This is a <strong>systematic, trend-following strategy</strong> designed for production-grade
+                    reliability. It trades a small universe of liquid instruments (5-8 assets) using daily bars.
+                </p>
+
+                <h4>Philosophy</h4>
+                <ul>
+                    <li>Simple, robust rules that can be backtested properly</li>
+                    <li>Minimize dependence on speed or exotic data</li>
+                    <li>Risk-first approach with multiple safety layers</li>
+                    <li>Paper trade first, then graduate to small live size</li>
+                </ul>
+
+                <h4>Default Universe (ETFs)</h4>
+                <ul>
+                    <li><strong>SPY</strong> - US Equities</li>
+                    <li><strong>TLT</strong> - US Treasuries (Long Duration)</li>
+                    <li><strong>GLD</strong> - Gold</li>
+                    <li><strong>DBC</strong> - Broad Commodities</li>
+                    <li><strong>UUP</strong> - USD Index (Optional)</li>
+                </ul>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Signal Calculation -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>trending_up</mat-icon>
+                    Signal Calculation (TSMOM)
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    The strategy uses <strong>Time-Series Momentum (TSMOM)</strong> to determine direction.
+                    Each instrument is evaluated independently based on its own price history.
+                </p>
+
+                <h4>Lookback Return</h4>
+                <p>Calculate the return over the lookback period:</p>
+                <div class="formula">
+                    R = (P<sub>today</sub> / P<sub>today - 126</sub>) - 1
+                </div>
+
+                <h4>Direction Signal</h4>
+                <p>Convert return to direction:</p>
+                <div class="formula">
+                    direction = +1 if R > 0 (LONG)<br>
+                    direction = -1 if R < 0 (SHORT)
+                </div>
+
+                <h4>Interpretation</h4>
+                <ul>
+                    <li><strong>126 days</strong> = approximately 6 months of trading days</li>
+                    <li>If price is higher than 6 months ago, go long (trend is up)</li>
+                    <li>If price is lower than 6 months ago, go short (trend is down)</li>
+                    <li>No signal strength - just direction (binary)</li>
+                </ul>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Volatility Estimation -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>show_chart</mat-icon>
+                    Volatility Estimation (EWMA)
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    Volatility is estimated using <strong>Exponentially Weighted Moving Average (EWMA)</strong>,
+                    following the RiskMetrics methodology.
+                </p>
+
+                <h4>Daily Log Returns</h4>
+                <div class="formula">
+                    r<sub>t</sub> = ln(P<sub>t</sub> / P<sub>t-1</sub>)
+                </div>
+
+                <h4>EWMA Variance</h4>
+                <p>Recursive calculation with exponential decay:</p>
+                <div class="formula">
+                    &sigma;&sup2;<sub>t</sub> = &lambda; &times; &sigma;&sup2;<sub>t-1</sub> + (1 - &lambda;) &times; r<sub>t</sub>&sup2;
+                </div>
+
+                <h4>Annualization</h4>
+                <div class="formula">
+                    &sigma;<sub>annual</sub> = &sigma;<sub>daily</sub> &times; &radic;252
+                </div>
+
+                <h4>Lambda Parameter (&lambda; = 0.94)</h4>
+                <ul>
+                    <li>Higher lambda = more weight on recent variance history</li>
+                    <li>0.94 is the RiskMetrics standard for daily data</li>
+                    <li>Half-life of approximately 11 days</li>
+                    <li>Responsive to regime changes while avoiding noise</li>
+                </ul>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Position Sizing -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>account_balance</mat-icon>
+                    Position Sizing
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    Positions are sized using <strong>inverse-volatility weighting</strong> to equalize
+                    risk contribution across assets.
+                </p>
+
+                <h4>Raw Weight Calculation</h4>
+                <div class="formula">
+                    weight = (target_vol / realized_vol) &times; direction
+                </div>
+
+                <h4>Inverse-Volatility Concept</h4>
+                <ul>
+                    <li>Higher volatility assets get <strong>smaller</strong> positions</li>
+                    <li>Lower volatility assets get <strong>larger</strong> positions</li>
+                    <li>Aims to equalize risk contribution from each asset</li>
+                </ul>
+
+                <h4>Example</h4>
+                <p>With 10% target volatility:</p>
+                <table class="example-table">
+                    <tr>
+                        <th>Asset</th>
+                        <th>Realized Vol</th>
+                        <th>Raw Weight</th>
+                    </tr>
+                    <tr>
+                        <td>SPY (20% vol)</td>
+                        <td>20%</td>
+                        <td>10%/20% = 0.50</td>
+                    </tr>
+                    <tr>
+                        <td>TLT (8% vol)</td>
+                        <td>8%</td>
+                        <td>10%/8% = 1.25</td>
+                    </tr>
+                    <tr>
+                        <td>GLD (15% vol)</td>
+                        <td>15%</td>
+                        <td>10%/15% = 0.67</td>
+                    </tr>
+                </table>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Risk Limits -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>security</mat-icon>
+                    Risk Limits
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    Multiple layers of risk controls protect against concentration and drawdowns.
+                </p>
+
+                <h4>Position Limits</h4>
+                <div class="limit-card">
+                    <strong>Single Instrument Cap: 35%</strong>
+                    <p>No single position can exceed 35% of portfolio, regardless of signal strength.</p>
+                </div>
+
+                <div class="limit-card">
+                    <strong>Gross Exposure Cap: 150%</strong>
+                    <p>Sum of absolute exposures cannot exceed 150%. Prevents excessive leverage.</p>
+                </div>
+
+                <h4>Drawdown Circuit Breaker</h4>
+                <div class="limit-card warning">
+                    <strong>Trigger: 10% drawdown from peak</strong>
+                    <p>When portfolio drops 10% from high-water mark, all positions are scaled to 50%.</p>
+                    <p>Remains active until recovery above the 10% threshold.</p>
+                </div>
+
+                <h4>Kill Switch</h4>
+                <div class="limit-card error">
+                    <strong>Trigger: -3% daily P&L</strong>
+                    <p>If daily loss exceeds 3%, immediately:</p>
+                    <ul>
+                        <li>Cancel all pending orders</li>
+                        <li>Halt trading</li>
+                        <li>Require manual reset to resume</li>
+                    </ul>
+                </div>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Parameters Reference -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>tune</mat-icon>
+                    Parameters Reference
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <table mat-table [dataSource]="parameters" class="param-table mat-elevation-z1">
+                    <ng-container matColumnDef="parameter">
+                        <th mat-header-cell *matHeaderCellDef>Parameter</th>
+                        <td mat-cell *matCellDef="let row">{{ row.parameter }}</td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="default">
+                        <th mat-header-cell *matHeaderCellDef>Default</th>
+                        <td mat-cell *matCellDef="let row"><code>{{ row.default }}</code></td>
+                    </ng-container>
+
+                    <ng-container matColumnDef="description">
+                        <th mat-header-cell *matHeaderCellDef>Description</th>
+                        <td mat-cell *matCellDef="let row">{{ row.description }}</td>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                </table>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Rebalancing Schedule -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>schedule</mat-icon>
+                    Rebalancing Schedule
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <h4>Daily Process</h4>
+                <ol>
+                    <li><strong>After Market Close (5:15 PM ET)</strong> - Ingest daily bars</li>
+                    <li><strong>Signal Generation</strong> - Compute momentum and volatility</li>
+                    <li><strong>Portfolio Optimization</strong> - Calculate target exposures with caps</li>
+                    <li><strong>Order Generation</strong> - Diff current vs target positions</li>
+                    <li><strong>Next Day Execution</strong> - Market-on-Open or TWAP (9:35-10:30)</li>
+                </ol>
+
+                <h4>Execution Policy</h4>
+                <ul>
+                    <li><strong>Order Type:</strong> Market-on-Open (MOO) by default</li>
+                    <li><strong>Alternative:</strong> TWAP over 60 minutes after open</li>
+                    <li><strong>Minimum Notional:</strong> $50 per order (avoid churn)</li>
+                    <li><strong>Idempotency:</strong> Orders have unique keys to prevent duplicates</li>
+                </ul>
+            </div>
+        </mat-expansion-panel>
+    </mat-accordion>
+</div>
