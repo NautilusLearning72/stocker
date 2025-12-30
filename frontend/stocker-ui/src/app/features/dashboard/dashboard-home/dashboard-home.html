@@ -3,8 +3,8 @@
     <app-portfolio-summary [metrics]="metrics"></app-portfolio-summary>
 
     <h2 class="mt-4">Current Holdings</h2>
-<app-holdings-table [holdings]="holdings" [instrumentNames]="instrumentNames"></app-holdings-table>
+    <app-holdings-table [holdings]="holdings" [instrumentNames]="instrumentNames"></app-holdings-table>
 
     <h2 class="mt-4">Recent Orders</h2>
-    <app-orders-table [orders]="orders"></app-orders-table>
+    <app-orders-table [orders]="orders" [instrumentNames]="instrumentNames"></app-orders-table>
 </div>

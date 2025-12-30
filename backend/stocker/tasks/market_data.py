@@ -10,13 +10,8 @@ import asyncio
 logger = logging.getLogger(__name__)
 
 
-@app.task(name="stocker.tasks.market_data.ingest_market_data")
-def ingest_market_data():
-    """
-    Scheduled task to ingest daily market data.
-    Runs after market close.
-    Implements TDD data quality validation.
-    """
+async def _ingest_market_data_async():
+    """Async implementation of market data ingestion."""
     service = MarketDataService(provider_name="yfinance")
 
     # Fetch last 3 days to catch up any missing/corrections
@@ -24,14 +19,23 @@ def ingest_market_data():
     start_date = today - timedelta(days=3)
 
     universe_service = UniverseService()
-    universe = asyncio.run(
-        universe_service.get_symbols_for_strategy(settings.DEFAULT_STRATEGY_ID)
-    )
+    universe = await universe_service.get_symbols_for_strategy(settings.DEFAULT_STRATEGY_ID)
 
     # Run the async service call
-    processed, alerts = asyncio.run(
-        service.fetch_and_store_daily_bars(universe, start_date, today)
-    )
+    processed, alerts = await service.fetch_and_store_daily_bars(universe, start_date, today)
+
+    return universe, processed, alerts, today
+
+
+@app.task(name="stocker.tasks.market_data.ingest_market_data")
+def ingest_market_data():
+    """
+    Scheduled task to ingest daily market data.
+    Runs after market close.
+    Implements TDD data quality validation.
+    """
+    # Run all async operations in a single event loop
+    universe, processed, alerts, today = asyncio.run(_ingest_market_data_async())
 
     # Log results
     if processed > 0:

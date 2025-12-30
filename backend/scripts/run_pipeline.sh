@@ -54,6 +54,18 @@ poetry run alembic upgrade head
 echo -e "\n${YELLOW}🌐 Ingesting instrument metrics for configured universes...${NC}"
 ./scripts/refresh_universe.sh
 
+# Initialize portfolio if not exists
+echo -e "\n${YELLOW}💰 Initializing portfolio...${NC}"
+poetry run python -c "
+from stocker.tasks.portfolio import initialize_portfolio
+result = initialize_portfolio()
+status = result['status']
+if status == 'created':
+    print(f'✓ Portfolio initialized: NAV=\${result[\"nav\"]:,.2f}, Cash=\${result[\"cash\"]:,.2f}')
+else:
+    print(f'✓ Portfolio exists: NAV=\${result[\"nav\"]:,.2f}, Cash=\${result[\"cash\"]:,.2f}')
+"
+
 # Create log directory
 mkdir -p logs
 
@@ -83,28 +95,25 @@ echo "  ✓ Broker Consumer (PID: $!)"
 poetry run python -m stocker.stream_consumers.ledger_consumer > logs/ledger_consumer.log 2>&1 &
 echo "  ✓ Ledger Consumer (PID: $!)"
 
+poetry run python -m stocker.stream_consumers.monitor_consumer > logs/monitor_consumer.log 2>&1 &
+echo "  ✓ Monitor Consumer (PID: $!)"
+
 # Wait for consumers to initialize
 sleep 2
 
-# Trigger market data ingestion
+# Trigger market data ingestion via Celery task
 echo -e "\n${YELLOW}📊 Triggering market data ingestion...${NC}"
 poetry run python -c "
-from stocker.services.market_data_service import MarketDataService
-from stocker.services.universe_service import UniverseService
-from stocker.core.config import settings
-from datetime import date, timedelta
-import asyncio
+from stocker.tasks.market_data import ingest_market_data
 
-async def ingest():
-    service = MarketDataService()
-    universe_service = UniverseService()
-    symbols = await universe_service.get_symbols_for_strategy(settings.DEFAULT_STRATEGY_ID)
-    end_date = date.today()
-    start_date = end_date - timedelta(days=30)
-    result = await service.fetch_and_store_daily_bars(symbols, start_date, end_date)
-    print(f'Ingested {result} bars')
-
-asyncio.run(ingest())
+# Run the market data ingestion task
+# This will:
+# 1. Fetch price data for the trading universe
+# 2. Validate data quality
+# 3. Store in database
+# 4. Publish to 'market-bars' stream to trigger signal generation
+result = ingest_market_data()
+print(f'✓ Market data ingestion completed: {result}')
 "
 
 echo -e "\n${GREEN}✅ Pipeline is running!${NC}"

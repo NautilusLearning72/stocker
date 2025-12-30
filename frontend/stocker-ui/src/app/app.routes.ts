@@ -3,7 +3,7 @@ import { DashboardHome } from './features/dashboard/dashboard-home/dashboard-hom
 import { SignalList } from './features/signals/signal-list/signal-list';
 import { SystemHealth } from './features/admin/system-health/system-health';
 import { StrategyGuide } from './features/guide/strategy-guide/strategy-guide';
-import { UniverseManager } from './features/universe/universe-manager/universe-manager';
+import { UniverseManager } from './features/universe/universe-manager';
 
 export const routes: Routes = [
     { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

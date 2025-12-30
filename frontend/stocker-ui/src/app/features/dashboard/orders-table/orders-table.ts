@@ -11,11 +11,13 @@ import { Order } from '../../../core/services/orders';
   styleUrl: './orders-table.scss',
 })
 export class OrdersTable {
-  displayedColumns: string[] = ['date', 'symbol', 'side', 'qty', 'status', 'fill_price'];
+  displayedColumns: string[] = ['date', 'symbol', 'name', 'side', 'qty', 'status', 'fill_price'];
 
   @Input() set orders(value: Order[]) {
     this.dataSource = value || [];
   }
+
+  @Input() instrumentNames: Record<string, string> = {};
 
   dataSource: Order[] = [];
 

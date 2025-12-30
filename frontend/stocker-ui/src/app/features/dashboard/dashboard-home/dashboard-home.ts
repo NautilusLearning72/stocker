@@ -101,7 +101,9 @@ export class DashboardHome implements OnInit, OnDestroy {
   }
 
   private loadInstrumentNames(holdings: Holding[]) {
-    const symbols = Array.from(new Set((holdings || []).map(h => h.symbol))).filter(Boolean);
+    const orderSymbols = Array.from(new Set((this.orders || []).map(o => o.symbol))).filter(Boolean);
+    const holdingSymbols = Array.from(new Set((holdings || []).map(h => h.symbol))).filter(Boolean);
+    const symbols = Array.from(new Set([...holdingSymbols, ...orderSymbols]));
     if (!symbols.length) {
       this.instrumentNames = {};
       return;

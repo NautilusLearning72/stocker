@@ -12,6 +12,11 @@
         <td mat-cell *matCellDef="let element"> {{element.symbol}} </td>
     </ng-container>
 
+    <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef> Name </th>
+        <td mat-cell *matCellDef="let element"> {{instrumentNames[element.symbol] || '—'}} </td>
+    </ng-container>
+
     <!-- Side Column -->
     <ng-container matColumnDef="side">
         <th mat-header-cell *matHeaderCellDef> Side </th>

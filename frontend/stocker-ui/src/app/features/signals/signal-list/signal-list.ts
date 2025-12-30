@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { InstrumentInfoService, InstrumentInfo } from '../../../core/services/instrument-info.service';
@@ -22,6 +22,7 @@ export class SignalList implements OnInit {
   constructor(
     private infoService: InstrumentInfoService,
     private signalService: SignalService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -32,14 +33,19 @@ export class SignalList implements OnInit {
     this.loading = true;
     this.signalService.getLatestSignals().subscribe({
       next: (signals) => {
-        this.dataSource = signals.map((s) => ({
+        const mapped = signals.map((s) => ({
           ...s,
-          momentum: s.lookback_return ?? 0,
-          volatility: s.ewma_vol ?? 0,
+          momentum: Number(s.lookback_return ?? 0),
+          volatility: Number(s.ewma_vol ?? 0),
         }));
-        const symbols = Array.from(new Set(signals.map((s) => s.symbol)));
-        this.loadNames(symbols);
-        this.loading = false;
+        // Defer assignment to avoid ExpressionChanged errors
+        Promise.resolve().then(() => {
+          this.dataSource = mapped;
+          const symbols = Array.from(new Set(signals.map((s) => s.symbol)));
+          this.loadNames(symbols);
+          this.loading = false;
+          this.cdr.detectChanges();
+        });
       },
       error: (err) => {
         this.loading = false;
@@ -55,11 +61,14 @@ export class SignalList implements OnInit {
       next: (rows: InstrumentInfo[]) => {
         const map: Record<string, string> = {};
         rows.forEach((info) => (map[info.symbol] = info.name || info.symbol));
-        this.instrumentNames = map;
-        this.dataSource = this.dataSource.map((s) => ({
-          ...s,
-          name: this.instrumentNames[s.symbol] || s.symbol,
-        }));
+        Promise.resolve().then(() => {
+          this.instrumentNames = map;
+          this.dataSource = this.dataSource.map((s) => ({
+            ...s,
+            name: this.instrumentNames[s.symbol] || s.symbol,
+          }));
+          this.cdr.detectChanges();
+        });
       },
       error: (err) => console.error('Failed to load instrument names', err),
     });

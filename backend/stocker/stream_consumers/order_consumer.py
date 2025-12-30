@@ -98,15 +98,41 @@ class OrderConsumer(BaseStreamConsumer):
             # Actually, standard logic often rounds down/nearest.
             
             if abs(diff_notional) < self.min_notional:
-                logger.info(f"Order for {symbol} too small (${diff_notional:.2f} < ${self.min_notional}), skipping")
+                logger.debug(f"Order for {symbol} too small (${diff_notional:.2f} < ${self.min_notional}), skipping")
                 return
-                
+
             if qty_to_trade == 0:
                 return
 
-            # 5. Create Order
-            # Check if pending order exists? (Complexity: Omitted for now)
-            
+            # Prevent short selling: Don't sell what we don't have
+            # (Unless short selling is explicitly enabled in settings)
+            allow_short = getattr(settings, 'ALLOW_SHORT_SELLING', False)
+            if side == "SELL" and current_qty <= 0 and not allow_short:
+                logger.info(f"Skipping short sell for {symbol} (current_qty={current_qty}, short selling disabled)")
+                return
+
+            # Cap sell quantity to current holdings (can't sell more than we own)
+            if side == "SELL" and qty_to_trade > current_qty:
+                logger.info(f"Capping {symbol} sell qty from {qty_to_trade} to {int(current_qty)} (can't sell more than owned)")
+                qty_to_trade = int(current_qty)
+                if qty_to_trade == 0:
+                    return
+
+            # 5. Check for existing pending order (idempotency)
+            existing_order_stmt = select(Order).where(
+                Order.portfolio_id == portfolio_id,
+                Order.symbol == symbol,
+                Order.date == target_date,
+                Order.status.in_(["NEW", "PENDING", "PENDING_EXECUTION"])
+            )
+            existing_result = await session.execute(existing_order_stmt)
+            existing_order = existing_result.scalar_one_or_none()
+
+            if existing_order:
+                logger.info(f"Order already exists for {symbol} on {target_date} (status={existing_order.status}), skipping")
+                return
+
+            # 6. Create Order
             order_id = str(uuid.uuid4())
             new_order = Order(
                 order_id=order_id,
@@ -121,7 +147,7 @@ class OrderConsumer(BaseStreamConsumer):
             session.add(new_order)
             await session.commit()
             
-            # 6. Publish 'order_created'
+            # 7. Publish 'order_created'
             await self.redis.xadd(StreamNames.ORDERS, {
                 "event_type": "order_created",
                 "order_id": order_id,

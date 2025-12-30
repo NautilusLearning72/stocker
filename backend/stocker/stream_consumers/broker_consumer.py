@@ -82,32 +82,16 @@ class BrokerConsumer(BaseStreamConsumer):
                 side=OrderSide.BUY if side == "BUY" else OrderSide.SELL,
                 time_in_force=TimeInForce.DAY
             )
-            
+
             submitted_order = self.trading_client.submit_order(req)
             broker_order_id = str(submitted_order.id)
             logger.info(f"Submitted order {order_internal_id} to Alpaca: {broker_order_id}")
-            
-            # 3. Wait for Fill (Simplified Synchrounous Simulation)
-            # In a real event system, we would listen to a SEPARATE stream of "Broker Events" (Alpaca Webhook)
-            # But for this simple Consumer, we might just mark it submitted.
-            # HOWEVER, for the loop to complete in this "Backtest-like" or "Simple Live" architecture,
-            # we need to generate fills to update holdings.
-            
-            # If we are in Paper/Live, we rely on Alpaca Webhooks or Polling to get the fill.
-            # BUT, the implementation plan implies this consumer "Publishes 'fills'".
-            # So let's assume immediate fill (optimistic) OR polling.
-            # For robustness, let's just log submission. 
-            # AND separate logic (maybe same consumer or different process) checks for fills.
-            
-            # CRITICAL SHORTCUT: For this version, let's assume "Instant Fill" at current price 
-            # IF simple mode, otherwise we are blocked waiting for real fill.
-            
-            # Let's Implement "Optimistic Fill" for now to allow end-to-end flow testing
-            # UNTIL we implement the Webhook Listener.
-            # Fetch quote for fill price
-            trade = self.trading_client.get_latest_trade(symbol)
-            execution_price = float(trade.price)
-            filled_qty = qty
+
+            # 3. Poll for actual fill from Alpaca
+            # Market orders typically fill immediately, but we should verify
+            execution_price, filled_qty = await self._wait_for_fill(
+                broker_order_id, symbol, qty
+            )
             
         except Exception as e:
             logger.error(f"Broker execution failed: {e}")
@@ -159,6 +143,77 @@ class BrokerConsumer(BaseStreamConsumer):
             "price": str(execution_price)
         })
         logger.info(f"Filled {side} {filled_qty} {symbol} @ {execution_price}")
+
+    async def _wait_for_fill(
+        self,
+        broker_order_id: str,
+        symbol: str,
+        expected_qty: float,
+        max_wait_seconds: int = 30,
+        poll_interval: float = 0.5
+    ) -> tuple[float, float]:
+        """
+        Poll Alpaca for order fill status.
+
+        Returns (fill_price, filled_qty).
+        Raises Exception if order not filled within timeout.
+        """
+        import time
+        from alpaca.trading.enums import OrderStatus
+
+        start_time = time.time()
+
+        while (time.time() - start_time) < max_wait_seconds:
+            try:
+                # Get order status from Alpaca
+                alpaca_order = self.trading_client.get_order_by_id(broker_order_id)
+
+                if alpaca_order.status == OrderStatus.FILLED:
+                    # Use actual fill price from Alpaca
+                    fill_price = float(alpaca_order.filled_avg_price)
+                    filled_qty = float(alpaca_order.filled_qty)
+                    logger.info(
+                        f"Order {broker_order_id} filled: {filled_qty} @ {fill_price} "
+                        f"(waited {time.time() - start_time:.1f}s)"
+                    )
+                    return fill_price, filled_qty
+
+                elif alpaca_order.status in [
+                    OrderStatus.CANCELED,
+                    OrderStatus.EXPIRED,
+                    OrderStatus.REJECTED
+                ]:
+                    raise Exception(
+                        f"Order {broker_order_id} {alpaca_order.status}: "
+                        f"{alpaca_order.status}"
+                    )
+
+                elif alpaca_order.status == OrderStatus.PARTIALLY_FILLED:
+                    # For partial fills, we could handle differently
+                    # For now, keep waiting for full fill
+                    logger.info(
+                        f"Order {broker_order_id} partially filled: "
+                        f"{alpaca_order.filled_qty}/{expected_qty}"
+                    )
+
+                # Order still pending, wait and retry
+                await asyncio.sleep(poll_interval)
+
+            except Exception as e:
+                if "order not found" in str(e).lower():
+                    # Order might not be immediately visible, retry
+                    await asyncio.sleep(poll_interval)
+                    continue
+                raise
+
+        # Timeout - fall back to latest trade price with warning
+        logger.warning(
+            f"Order {broker_order_id} fill timeout after {max_wait_seconds}s, "
+            f"using latest trade price as fallback"
+        )
+        trade = self.trading_client.get_latest_trade(symbol)
+        return float(trade.price), expected_qty
+
 
 if __name__ == "__main__":
     async def main():

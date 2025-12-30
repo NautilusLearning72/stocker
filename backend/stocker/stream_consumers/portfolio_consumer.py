@@ -38,25 +38,26 @@ class PortfolioConsumer(BaseStreamConsumer):
 
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
         # data: {event_type, strategy, symbol, date, target_weight, ...}
-        
-        # NOTE: Portfolio Optimization typically happens once per day after ALL signals are ready.
-        # But this is a stream consumer processing one by one.
-        # Approach:
-        # 1. Simple: Just optimize this single signal against empty portfolio (naive).
-        # 2. Better: Checks if we have signals for all universe for this date.
-        # 3. Hybrid: We re-optimize the WHOLE portfolio every time a new signal arrives for the date.
-        #    This is "eventual consistency". As signals arrive, target weights adjust.
-        #    Wait, PortfolioOptimizer needs ALL signals to calculate Gross Exposure properly if we want to CAP it.
-        #    If we process one by one, we don't know the others.
-        
-        # Decision: We will fetch ALL valid signals for the message's DATE from DB, 
-        # then run optimization on the full set, then publish targets for ALL.
-        
+        event_type = data.get("event_type", "signal_generated")
+
+        # IMPORTANT: Only run optimization on batch completion, NOT on every individual signal.
+        # This prevents exponential order generation (N signals × N targets = N² orders)
+        if event_type == "signal_generated":
+            # Individual signal - just log and wait for batch completion
+            logger.debug(f"Received signal for {data.get('symbol')}, waiting for batch completion")
+            return
+
+        if event_type != "signals_batch_complete":
+            logger.warning(f"Unknown event type: {event_type}")
+            return
+
+        # Batch completion - now run optimization on all signals for this date
         target_date_str = data.get("date")
         if not target_date_str:
             return
-            
+
         target_date = date.fromisoformat(target_date_str)
+        logger.info(f"Batch complete for {target_date}, running portfolio optimization")
         
         # 1. Fetch current portfolio state (drawdown)
         # We need the LATEST known state. If processing today's signals, we want yesterday's Close state.

@@ -229,30 +229,41 @@ class MarketDataService:
         if not records:
             return 0, self.validator.get_alerts()
 
-        # 3. Store (Upsert)
-        async with AsyncSessionLocal() as session:
-            # We use Postgres bulk upsert (ON CONFLICT DO UPDATE)
-            # Index is (symbol, date)
-            stmt = insert(DailyBar).values(records)
-            stmt = stmt.on_conflict_do_update(
-                constraint="uq_prices_daily_symbol_date",
-                set_={
-                    "open": stmt.excluded.open,
-                    "high": stmt.excluded.high,
-                    "low": stmt.excluded.low,
-                    "close": stmt.excluded.close,
-                    "adj_close": stmt.excluded.adj_close,
-                    "volume": stmt.excluded.volume,
-                    "source": stmt.excluded.source,
-                    "source_hash": stmt.excluded.source_hash,
-                    "updated_at": stmt.excluded.created_at  # roughly usable as update time
-                }
-            )
+        # 3. Store (Upsert) in batches to avoid parameter limit
+        # SQLAlchemy has a limit of ~32k parameters
+        # Each record has ~12 fields, so batch size of 1000 = 12k parameters
+        BATCH_SIZE = 1000
+        total_inserted = 0
 
+        async with AsyncSessionLocal() as session:
             try:
-                await session.execute(stmt)
+                for i in range(0, len(records), BATCH_SIZE):
+                    batch = records[i:i + BATCH_SIZE]
+
+                    # We use Postgres bulk upsert (ON CONFLICT DO UPDATE)
+                    # Index is (symbol, date)
+                    stmt = insert(DailyBar).values(batch)
+                    stmt = stmt.on_conflict_do_update(
+                        constraint="uq_prices_daily_symbol_date",
+                        set_={
+                            "open": stmt.excluded.open,
+                            "high": stmt.excluded.high,
+                            "low": stmt.excluded.low,
+                            "close": stmt.excluded.close,
+                            "adj_close": stmt.excluded.adj_close,
+                            "volume": stmt.excluded.volume,
+                            "source": stmt.excluded.source,
+                            "source_hash": stmt.excluded.source_hash,
+                            "updated_at": stmt.excluded.created_at  # roughly usable as update time
+                        }
+                    )
+
+                    await session.execute(stmt)
+                    total_inserted += len(batch)
+                    logger.info(f"Upserted batch {i // BATCH_SIZE + 1}: {len(batch)} bars (total: {total_inserted}/{len(records)})")
+
                 await session.commit()
-                logger.info(f"Upserted {len(records)} daily bars")
+                logger.info(f"Successfully upserted {total_inserted} daily bars")
 
                 # Log any data quality alerts
                 alerts = self.validator.get_alerts()
@@ -261,7 +272,7 @@ class MarketDataService:
                     for alert in alerts:
                         logger.warning(f"  [{alert.severity}] {alert.symbol}: {alert.issue_type} - {alert.message}")
 
-                return len(records), alerts
+                return total_inserted, alerts
             except Exception as e:
                 logger.error(f"Failed to store market data: {e}")
                 await session.rollback()

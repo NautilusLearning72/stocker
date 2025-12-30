@@ -37,6 +37,162 @@
             </div>
         </mat-expansion-panel>
 
+        <!-- Pipeline Architecture -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>account_tree</mat-icon>
+                    Pipeline Architecture
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    The trading system uses an <strong>event-driven architecture</strong> with Redis Streams
+                    connecting specialized consumers in a directed acyclic graph (DAG).
+                </p>
+
+                <h4>Data Flow</h4>
+                <div class="dag-container">
+<pre class="dag-ascii">
+┌────────────────────────────────────────────────────────────────┐
+│                   STOCKER PIPELINE ARCHITECTURE                │
+└────────────────────────────────────────────────────────────────┘
+
+                    ┌──────────────────────┐
+                    │   Market Data Task   │
+                    │ (ingest_market_data) │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   market-bars stream │  ← Redis Stream
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Signal Consumer    │
+                    │  (TSMOM + EWMA vol)  │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    signals stream    │  ← Redis Stream
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  Portfolio Consumer  │
+                    │  (optimizer + caps)  │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    targets stream    │  ← Redis Stream
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    Order Consumer    │
+                    │ (diff current vs     │
+                    │  target positions)   │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    orders stream     │  ← Redis Stream
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Broker Consumer    │
+                    │  (Alpaca execution)  │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │     fills stream     │  ← Redis Stream
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Ledger Consumer    │
+                    │  (Holdings + Cash)   │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Database Updates   │
+                    │ (portfolio_state,    │
+                    │  holdings, orders)   │
+                    └──────────────────────┘
+</pre>
+                </div>
+
+                <h4>Consumer Details</h4>
+                <table class="consumer-table">
+                    <thead>
+                        <tr>
+                            <th>Consumer</th>
+                            <th>Listens To</th>
+                            <th>Publishes To</th>
+                            <th>Function</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Signal</strong></td>
+                            <td><code>market-bars</code></td>
+                            <td><code>signals</code></td>
+                            <td>Computes TSMOM direction + EWMA vol → target weights</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Portfolio</strong></td>
+                            <td><code>signals</code></td>
+                            <td><code>targets</code></td>
+                            <td>Applies caps (35% single, 150% gross), drawdown scaling</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Order</strong></td>
+                            <td><code>targets</code></td>
+                            <td><code>orders</code></td>
+                            <td>Diffs target vs current holdings → generates orders</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Broker</strong></td>
+                            <td><code>orders</code></td>
+                            <td><code>fills</code></td>
+                            <td>Submits to Alpaca API → captures execution</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ledger</strong></td>
+                            <td><code>fills</code></td>
+                            <td>(database)</td>
+                            <td>Updates holdings, cash, portfolio state</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Monitor</strong></td>
+                            <td><code>portfolio-state</code></td>
+                            <td><code>alerts</code></td>
+                            <td>Kill switch (-3% P&L), drawdown alerts</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Execution Trigger</h4>
+                <p>
+                    The full pipeline is triggered by <code>run_pipeline.sh</code>, which:
+                </p>
+                <ol>
+                    <li>Starts all stream consumers (Signal, Portfolio, Order, Broker, Ledger)</li>
+                    <li>Runs the <code>ingest_market_data()</code> task</li>
+                    <li>Market data task publishes to <code>market-bars</code> stream</li>
+                    <li>Each consumer processes events and publishes downstream</li>
+                    <li>Orders are generated automatically from signal → target → order flow</li>
+                </ol>
+            </div>
+        </mat-expansion-panel>
+
         <!-- Signal Calculation -->
         <mat-expansion-panel>
             <mat-expansion-panel-header>
