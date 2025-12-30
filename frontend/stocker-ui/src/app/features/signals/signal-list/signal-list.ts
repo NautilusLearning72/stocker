@@ -1,30 +1,67 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
-
-export interface Signal {
-  date: string;
-  symbol: string;
-  momentum: number;
-  volatility: number;
-  direction: number;
-  weight: number;
-}
-
-const ELEMENT_DATA: Signal[] = [
-  { date: '2025-12-28', symbol: 'AAPL', momentum: 0.15, volatility: 0.22, direction: 1, weight: 0.05 },
-  { date: '2025-12-28', symbol: 'MSFT', momentum: -0.05, volatility: 0.18, direction: -1, weight: 0.00 },
-  { date: '2025-12-28', symbol: 'SPY', momentum: 0.08, volatility: 0.12, direction: 1, weight: 0.15 },
-  { date: '2025-12-28', symbol: 'GLD', momentum: 0.02, volatility: 0.10, direction: 1, weight: 0.12 },
-];
+import { InstrumentInfoService, InstrumentInfo } from '../../../core/services/instrument-info.service';
+import { SignalService, Signal } from '../../../core/services/signal.service';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-signal-list',
-  imports: [CommonModule, MatTableModule],
+  imports: [CommonModule, MatTableModule, MatChipsModule, MatIconModule],
   templateUrl: './signal-list.html',
   styleUrl: './signal-list.scss',
 })
-export class SignalList {
-  displayedColumns: string[] = ['date', 'symbol', 'momentum', 'volatility', 'direction', 'weight'];
-  dataSource = ELEMENT_DATA;
+export class SignalList implements OnInit {
+  displayedColumns: string[] = ['date', 'symbol', 'name', 'momentum', 'volatility', 'direction', 'weight'];
+  dataSource: (Signal & { name?: string })[] = [];
+  instrumentNames: Record<string, string> = {};
+  loading = false;
+  errorMsg = '';
+
+  constructor(
+    private infoService: InstrumentInfoService,
+    private signalService: SignalService,
+  ) {}
+
+  ngOnInit(): void {
+    this.fetchSignals();
+  }
+
+  fetchSignals(): void {
+    this.loading = true;
+    this.signalService.getLatestSignals().subscribe({
+      next: (signals) => {
+        this.dataSource = signals.map((s) => ({
+          ...s,
+          momentum: s.lookback_return ?? 0,
+          volatility: s.ewma_vol ?? 0,
+        }));
+        const symbols = Array.from(new Set(signals.map((s) => s.symbol)));
+        this.loadNames(symbols);
+        this.loading = false;
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMsg = 'Failed to load signals';
+        console.error(err);
+      },
+    });
+  }
+
+  loadNames(symbols: string[]): void {
+    if (!symbols.length) return;
+    this.infoService.getInfo(symbols).subscribe({
+      next: (rows: InstrumentInfo[]) => {
+        const map: Record<string, string> = {};
+        rows.forEach((info) => (map[info.symbol] = info.name || info.symbol));
+        this.instrumentNames = map;
+        this.dataSource = this.dataSource.map((s) => ({
+          ...s,
+          name: this.instrumentNames[s.symbol] || s.symbol,
+        }));
+      },
+      error: (err) => console.error('Failed to load instrument names', err),
+    });
+  }
 }

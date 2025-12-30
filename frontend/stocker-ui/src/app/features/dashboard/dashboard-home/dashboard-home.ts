@@ -7,6 +7,7 @@ import { OrdersService, Order } from '../../../core/services/orders';
 import { PortfolioSummary } from '../portfolio-summary/portfolio-summary';
 import { HoldingsTable } from '../holdings-table/holdings-table';
 import { OrdersTable } from '../orders-table/orders-table';
+import { InstrumentInfoService, InstrumentInfo } from '../../../core/services/instrument-info.service';
 
 @Component({
   selector: 'app-dashboard-home',
@@ -24,6 +25,7 @@ export class DashboardHome implements OnInit, OnDestroy {
 
   holdings: Holding[] = [];
   orders: Order[] = [];
+  instrumentNames: Record<string, string> = {};
 
   private sub?: Subscription;
 
@@ -31,7 +33,8 @@ export class DashboardHome implements OnInit, OnDestroy {
     private streamService: StreamService,
     private portfolioService: PortfolioService,
     private ordersService: OrdersService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private infoService: InstrumentInfoService,
   ) { }
 
   ngOnInit() {
@@ -67,6 +70,7 @@ export class DashboardHome implements OnInit, OnDestroy {
     this.portfolioService.getHoldings().subscribe({
       next: (holdings) => {
         this.holdings = [...holdings];
+        this.loadInstrumentNames(this.holdings);
         this.cdr.detectChanges();
       },
       error: (err) => console.error('Failed to load holdings:', err)
@@ -94,5 +98,24 @@ export class DashboardHome implements OnInit, OnDestroy {
       { label: 'Gross Exposure', value: data.exposure_pct * 100, format: 'percent' },
       { label: 'Drawdown', value: data.drawdown * 100, format: 'percent' }
     ];
+  }
+
+  private loadInstrumentNames(holdings: Holding[]) {
+    const symbols = Array.from(new Set((holdings || []).map(h => h.symbol))).filter(Boolean);
+    if (!symbols.length) {
+      this.instrumentNames = {};
+      return;
+    }
+    this.infoService.getInfo(symbols).subscribe({
+      next: (rows: InstrumentInfo[]) => {
+        const map: Record<string, string> = {};
+        rows.forEach(info => {
+          map[info.symbol] = info.name || info.symbol;
+        });
+        this.instrumentNames = map;
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Failed to load instrument names', err),
+    });
   }
 }

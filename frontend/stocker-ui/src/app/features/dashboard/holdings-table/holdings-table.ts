@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 
 export interface HoldingDisplay {
   symbol: string;
+  name?: string;
   qty: number;
   cost_basis: number;
   market_value: number;
@@ -16,11 +17,13 @@ export interface HoldingDisplay {
   styleUrl: './holdings-table.scss',
 })
 export class HoldingsTable {
-  displayedColumns: string[] = ['symbol', 'qty', 'cost_basis', 'market_value'];
+  displayedColumns: string[] = ['symbol', 'name', 'qty', 'cost_basis', 'market_value'];
 
   @Input() set holdings(value: any[]) {
     this.dataSource = value || [];
   }
+
+  @Input() instrumentNames: Record<string, string> = {};
 
   dataSource: HoldingDisplay[] = [];
 }

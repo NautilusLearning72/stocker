@@ -50,6 +50,10 @@ sleep 3
 echo -e "\n${YELLOW}🔄 Running database migrations...${NC}"
 poetry run alembic upgrade head
 
+# Fetch instrument metrics for configured universes
+echo -e "\n${YELLOW}🌐 Ingesting instrument metrics for configured universes...${NC}"
+./scripts/refresh_universe.sh
+
 # Create log directory
 mkdir -p logs
 
@@ -86,12 +90,15 @@ sleep 2
 echo -e "\n${YELLOW}📊 Triggering market data ingestion...${NC}"
 poetry run python -c "
 from stocker.services.market_data_service import MarketDataService
+from stocker.services.universe_service import UniverseService
+from stocker.core.config import settings
 from datetime import date, timedelta
 import asyncio
 
 async def ingest():
     service = MarketDataService()
-    symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'SPY', 'QQQ', 'GLD', 'TLT']
+    universe_service = UniverseService()
+    symbols = await universe_service.get_symbols_for_strategy(settings.DEFAULT_STRATEGY_ID)
     end_date = date.today()
     start_date = end_date - timedelta(days=30)
     result = await service.fetch_and_store_daily_bars(symbols, start_date, end_date)

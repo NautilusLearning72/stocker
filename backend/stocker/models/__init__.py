@@ -5,9 +5,14 @@ from stocker.models.base import TimestampMixin, IdMixin
 from stocker.models.daily_bar import DailyBar
 from stocker.models.intraday_bar import IntradayBar
 from stocker.models.instrument_info import InstrumentInfo
+from stocker.models.instrument_metrics import InstrumentMetrics
 from stocker.models.corporate_action import CorporateAction
 from stocker.models.market_sentiment import MarketSentiment
 from stocker.models.market_breadth import MarketBreadth
+from stocker.models.trading_universe import TradingUniverse
+from stocker.models.instrument_universe import InstrumentUniverse
+from stocker.models.instrument_universe_member import InstrumentUniverseMember
+from stocker.models.strategy_universe import StrategyUniverse
 
 # Strategy & Portfolio
 from stocker.models.signal import Signal
@@ -27,9 +32,14 @@ __all__ = [
     "DailyBar",
     "IntradayBar",
     "InstrumentInfo",
+    "InstrumentMetrics",
     "CorporateAction",
     "MarketSentiment",
     "MarketBreadth",
+    "TradingUniverse",
+    "InstrumentUniverse",
+    "InstrumentUniverseMember",
+    "StrategyUniverse",
     "Signal",
     "TargetExposure",
     "Order",

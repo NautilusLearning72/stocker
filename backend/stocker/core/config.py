@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     TRADING_UNIVERSE: list[str] = ["SPY", "TLT", "GLD", "DBC", "UUP"]
     MARKET_CLOSE_HOUR: int = 17  # 5 PM ET
     MARKET_CLOSE_MINUTE: int = 15  # 15 minutes after close
+    DEFAULT_STRATEGY_ID: str = "main_strategy"
+    USE_DYNAMIC_UNIVERSE: bool = False
+    UNIVERSE_SIZE: int = 250
+    UNIVERSE_LOOKBACK_DAYS: int = 20
+    UNIVERSE_SOURCE: str = "alpaca_most_actives"
+    UNIVERSE_SCREENER_BY: str = "volume"
+    UNIVERSE_SCREENER_MAX: int = 100
+    UNIVERSE_REFRESH_HOUR: int = 18
+    UNIVERSE_REFRESH_MINUTE: int = 0
 
     # Strategy Parameters
     LOOKBACK_DAYS: int = 126
@@ -63,6 +72,11 @@ class Settings(BaseSettings):
     POLYGON_API_KEY: str = ""
     ALPHA_VANTAGE_API_KEY: str = ""
     USE_YFINANCE_FALLBACK: bool = True
+    FUNDAMENTALS_PROVIDER: str = "yfinance"
+    FUNDAMENTALS_REFRESH_HOUR: int = 19
+    FUNDAMENTALS_REFRESH_MINUTE: int = 0
+    FUNDAMENTALS_MAX_RETRIES: int = 3
+    FUNDAMENTALS_RETRY_BACKOFF_SEC: float = 1.0
 
     # Broker Configuration
     BROKER_MODE: Literal["paper", "live"] = "paper"

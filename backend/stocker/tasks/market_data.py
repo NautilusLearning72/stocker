@@ -2,6 +2,7 @@ from stocker.scheduler.celery_app import app
 from stocker.services.market_data_service import MarketDataService
 from stocker.core.redis import get_redis, StreamNames
 from stocker.core.config import settings
+from stocker.services.universe_service import UniverseService
 from datetime import date, timedelta
 import logging
 import asyncio
@@ -22,7 +23,10 @@ def ingest_market_data():
     today = date.today()
     start_date = today - timedelta(days=3)
 
-    universe = settings.TRADING_UNIVERSE
+    universe_service = UniverseService()
+    universe = asyncio.run(
+        universe_service.get_symbols_for_strategy(settings.DEFAULT_STRATEGY_ID)
+    )
 
     # Run the async service call
     processed, alerts = asyncio.run(

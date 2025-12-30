@@ -70,11 +70,15 @@ from stocker.api.sse import router as sse_router
 from stocker.api.portfolio import router as portfolio_router
 from stocker.api.signals import router as signals_router
 from stocker.api.orders import router as orders_router
+from stocker.api.universes import router as universes_router
+from stocker.api.instruments import router as instruments_router
 
 app.include_router(sse_router, prefix="/api/v1", tags=["stream"])
 app.include_router(portfolio_router, prefix="/api/v1/portfolio", tags=["portfolio"])
 app.include_router(signals_router, prefix="/api/v1/signals", tags=["signals"])
 app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
+app.include_router(universes_router, prefix="/api/v1/universes", tags=["universes"])
+app.include_router(instruments_router, prefix="/api/v1/instruments", tags=["instruments"])
 
 # TODO: Include admin router when created
 # app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])

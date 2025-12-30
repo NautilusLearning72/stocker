@@ -50,6 +50,7 @@ Historical and live intraday data (e.g., 1-minute, 5-minute bars).
 | `close` | NUMERIC(14, 4) | NOT NULL | |
 | `volume` | BIGINT | NOT NULL | |
 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | | |
 
 *   **Unique Constraint**: `(symbol, timestamp, interval)`
 
@@ -84,10 +85,126 @@ Master table for tradable assets (Sector, Industry, etc.).
 | `active` | BOOLEAN | DEFAULT TRUE | Is currently tradable |
 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | |
 
+#### `instrument_metrics`
+Investor-facing fundamentals and valuation metrics (one row per symbol per as-of date).
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | BIGSERIAL | PK | |
+| `symbol` | VARCHAR(20) | NOT NULL, IDX | |
+| `as_of_date` | DATE | NOT NULL, IDX | Date metrics apply (market date or report date) |
+| `period_type` | VARCHAR(10) | NOT NULL | DAILY, TTM, FQ, FY |
+| `period_end` | DATE | | Fiscal period end date (if applicable) |
+| `fiscal_year` | INTEGER | | |
+| `fiscal_quarter` | INTEGER | | |
+| `source` | VARCHAR(50) | NOT NULL | e.g., 'yfinance', 'tiingo' |
+| `currency` | VARCHAR(10) | DEFAULT 'USD' | |
+| `market_cap` | NUMERIC(20, 2) | | |
+| `enterprise_value` | NUMERIC(20, 2) | | |
+| `shares_outstanding` | BIGINT | | |
+| `float_shares` | BIGINT | | |
+| `beta` | NUMERIC(6, 4) | | |
+| `pe_ttm` | NUMERIC(12, 4) | | Trailing P/E |
+| `pe_forward` | NUMERIC(12, 4) | | Forward P/E |
+| `price_to_book` | NUMERIC(12, 4) | | |
+| `price_to_sales` | NUMERIC(12, 4) | | |
+| `peg_ratio` | NUMERIC(12, 4) | | |
+| `ev_to_ebitda` | NUMERIC(12, 4) | | |
+| `ev_to_ebit` | NUMERIC(12, 4) | | |
+| `fcf_yield` | NUMERIC(12, 6) | | |
+| `dividend_yield` | NUMERIC(12, 6) | | |
+| `dividend_rate` | NUMERIC(14, 6) | | Annual dividend per share |
+| `payout_ratio` | NUMERIC(12, 6) | | |
+| `revenue` | NUMERIC(20, 2) | | |
+| `ebitda` | NUMERIC(20, 2) | | |
+| `net_income` | NUMERIC(20, 2) | | |
+| `free_cash_flow` | NUMERIC(20, 2) | | |
+| `gross_margin` | NUMERIC(12, 6) | | |
+| `operating_margin` | NUMERIC(12, 6) | | |
+| `net_margin` | NUMERIC(12, 6) | | |
+| `ebitda_margin` | NUMERIC(12, 6) | | |
+| `roe` | NUMERIC(12, 6) | | Return on equity |
+| `roa` | NUMERIC(12, 6) | | Return on assets |
+| `roic` | NUMERIC(12, 6) | | Return on invested capital |
+| `revenue_growth_yoy` | NUMERIC(12, 6) | | |
+| `earnings_growth_yoy` | NUMERIC(12, 6) | | |
+| `eps_growth_yoy` | NUMERIC(12, 6) | | |
+| `fcf_growth_yoy` | NUMERIC(12, 6) | | |
+| `debt_to_equity` | NUMERIC(12, 6) | | |
+| `net_debt_to_ebitda` | NUMERIC(12, 6) | | |
+| `interest_coverage` | NUMERIC(12, 6) | | |
+| `current_ratio` | NUMERIC(12, 6) | | |
+| `quick_ratio` | NUMERIC(12, 6) | | |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | | |
+
+*   **Unique Constraint**: `(symbol, as_of_date, period_type, source)`
 
 ---
 
-### 2.3 Market Intelligence (Sentiment & Broad Market)
+### 2.3 Trading Universe
+
+#### `instrument_universe`
+User-managed universes (global and per-strategy).
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | BIGSERIAL | PK | |
+| `name` | VARCHAR(100) | UNIQUE, NOT NULL | Universe name |
+| `description` | TEXT | | |
+| `is_global` | BOOLEAN | DEFAULT FALSE | Global master universe flag |
+| `is_deleted` | BOOLEAN | DEFAULT FALSE | Soft delete |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | | |
+
+#### `instrument_universe_member`
+Membership of instruments in a user-managed universe.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | BIGSERIAL | PK | |
+| `universe_id` | INT | FK `instrument_universe.id` | |
+| `symbol` | VARCHAR(20) | NOT NULL, IDX | |
+| `is_deleted` | BOOLEAN | DEFAULT FALSE | Soft delete |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | | |
+
+*   **Unique Constraint**: `(universe_id, symbol)`
+
+#### `strategy_universe`
+Mapping between strategies and their assigned universe.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | BIGSERIAL | PK | |
+| `strategy_id` | VARCHAR(100) | UNIQUE, NOT NULL | Strategy identifier |
+| `universe_id` | INT | FK `instrument_universe.id` | |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | | |
+
+*   **Unique Constraint**: `(strategy_id)`
+
+#### `trading_universe`
+Legacy dynamic universe (kept for historical reference).
+Daily snapshot of the dynamic trading universe (top-N by liquidity).
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | BIGSERIAL | PK | |
+| `as_of_date` | DATE | NOT NULL, IDX | Date of ranking |
+| `symbol` | VARCHAR(20) | NOT NULL, IDX | |
+| `rank` | INTEGER | NOT NULL | 1 = most active |
+| `avg_dollar_volume` | NUMERIC(20, 2) | | Avg(Price * Volume) |
+| `source` | VARCHAR(50) | NOT NULL | e.g., 'prices_daily' |
+| `lookback_days` | INTEGER | | |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | | |
+
+*   **Unique Constraint**: `(as_of_date, symbol, source)`
+
+---
+
+### 2.4 Market Intelligence (Sentiment & Broad Market)
 
 #### `market_sentiment`
 Aggregated sentiment data derived from news/social.
@@ -115,7 +232,7 @@ Broad market health indicators.
 
 ---
 
-### 2.4 Strategy & Portfolio
+### 2.5 Strategy & Portfolio
 
 #### `signals`
 Output of the **Signal Engine**. One row per symbol per day.
@@ -153,7 +270,7 @@ Output of the **Portfolio Engine**. Defines what we *want* to own.
 
 ---
 
-### 2.3 Execution
+### 2.6 Execution
 
 #### `orders`
 Instructions sent to the broker.
@@ -191,7 +308,7 @@ Confirmed trades from the broker.
 
 ---
 
-### 2.4 Accounting
+### 2.7 Accounting
 
 #### `portfolio_state`
 Daily snapshots of portfolio health.
