@@ -13,20 +13,13 @@ logger = logging.getLogger(__name__)
 @app.task(name="stocker.tasks.instrument_metrics.ingest_instrument_metrics")
 def ingest_instrument_metrics() -> dict[str, object]:
     """Scheduled task to ingest investor-facing instrument metrics."""
-    service = InstrumentMetricsService(provider_name=settings.FUNDAMENTALS_PROVIDER)
-    as_of_date = date.today()
-    universe_service = UniverseService()
-    universe = asyncio.run(universe_service.get_all_symbols())
-
-    processed = asyncio.run(
-        service.fetch_and_store_metrics(universe, as_of_date=as_of_date)
-    )
+    processed, symbol_count, as_of_date = asyncio.run(_ingest_instrument_metrics_async())
 
     if processed:
         logger.info(
             "Ingested %s instrument metrics rows for %s symbols",
             processed,
-            len(universe),
+            symbol_count,
         )
     else:
         logger.warning("No instrument metrics ingested")
@@ -35,5 +28,16 @@ def ingest_instrument_metrics() -> dict[str, object]:
         "status": "completed",
         "processed": processed,
         "date": str(as_of_date),
-        "symbols": len(universe),
+        "symbols": symbol_count,
     }
+
+
+async def _ingest_instrument_metrics_async() -> tuple[int, int, date]:
+    service = InstrumentMetricsService(provider_name=settings.FUNDAMENTALS_PROVIDER)
+    as_of_date = date.today()
+    universe_service = UniverseService()
+    universe = await universe_service.get_all_symbols()
+
+    processed = await service.fetch_and_store_metrics(universe, as_of_date=as_of_date)
+
+    return processed, len(universe), as_of_date

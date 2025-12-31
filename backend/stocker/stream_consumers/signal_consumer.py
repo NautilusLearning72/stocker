@@ -34,7 +34,13 @@ class SignalConsumer(BaseStreamConsumer):
             strategy_name="vol_target_trend_v1",
             lookback_days=settings.LOOKBACK_DAYS,
             ewma_lambda=settings.EWMA_LAMBDA,
-            target_vol=settings.TARGET_VOL
+            target_vol=settings.TARGET_VOL,
+            # Trend confirmation settings
+            confirmation_enabled=settings.CONFIRMATION_ENABLED,
+            confirmation_type=settings.CONFIRMATION_TYPE,
+            donchian_period=settings.DONCHIAN_PERIOD,
+            ma_fast_period=settings.MA_FAST_PERIOD,
+            ma_slow_period=settings.MA_SLOW_PERIOD
         ))
 
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:

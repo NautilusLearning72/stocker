@@ -204,6 +204,38 @@ class UniverseService:
                 return symbols
             return settings.TRADING_UNIVERSE
 
+    async def get_global_symbols(self) -> list[str]:
+        async with self._get_session() as session:
+            universe_stmt = (
+                select(InstrumentUniverse.id)
+                .where(
+                    InstrumentUniverse.is_global.is_(True),
+                    InstrumentUniverse.is_deleted.is_(False),
+                )
+                .order_by(InstrumentUniverse.id.asc())
+                .limit(1)
+            )
+            result = await session.execute(universe_stmt)
+            universe_id = result.scalar_one_or_none()
+            if universe_id is None:
+                return await self.get_all_symbols()
+
+            symbols_stmt = (
+                select(InstrumentUniverseMember.symbol)
+                .join(InstrumentUniverse, InstrumentUniverse.id == InstrumentUniverseMember.universe_id)
+                .where(
+                    InstrumentUniverseMember.universe_id == universe_id,
+                    InstrumentUniverseMember.is_deleted.is_(False),
+                    InstrumentUniverse.is_deleted.is_(False),
+                )
+                .order_by(InstrumentUniverseMember.symbol.asc())
+            )
+            symbols_result = await session.execute(symbols_stmt)
+            symbols = [row[0] for row in symbols_result.all()]
+            if symbols:
+                return symbols
+            return await self.get_all_symbols()
+
     async def get_symbols_for_universe(
         self,
         universe_id: int,

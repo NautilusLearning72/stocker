@@ -1,0 +1,177 @@
+.config-container {
+  padding: 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff3e0;
+  border-left: 4px solid #ff9800;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+
+  mat-icon {
+    color: #ff9800;
+  }
+
+  span {
+    color: #e65100;
+    font-weight: 500;
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px;
+  color: #666;
+}
+
+.error-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffebee;
+  border-left: 4px solid #f44336;
+  padding: 12px 16px;
+
+  mat-icon {
+    color: #f44336;
+  }
+
+  span {
+    color: #c62828;
+  }
+}
+
+.tab-content {
+  padding: 24px 16px;
+}
+
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.config-field {
+  .field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .input-with-help {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  mat-form-field {
+    width: 100%;
+    max-width: 400px;
+  }
+
+  mat-slide-toggle {
+    margin-bottom: 4px;
+
+    &.dirty {
+      ::ng-deep .mdc-switch__track {
+        border-color: #2196f3;
+      }
+    }
+  }
+
+  .help-icon {
+    color: #9e9e9e;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    cursor: help;
+    margin-top: 12px;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #1976d2;
+    }
+  }
+
+  .toggle-row .help-icon {
+    margin-top: 0;
+  }
+
+  .field-description {
+    font-size: 12px;
+    color: #666;
+    margin-left: 48px;
+  }
+
+  .range-hint {
+    color: #999;
+    margin-left: 4px;
+  }
+
+  input.dirty,
+  mat-select.dirty {
+    background-color: rgba(33, 150, 243, 0.05);
+  }
+}
+
+.dirty-badge {
+  background: #2196f3;
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+
+.tab-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.global-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid #eee;
+  background: #fafafa;
+
+  .changes-summary {
+    color: #666;
+    font-size: 14px;
+    margin-right: auto;
+  }
+}
+
+::ng-deep .mat-mdc-tab-body-content {
+  overflow: visible !important;
+}
+
+// Global tooltip styles (rendered outside component)
+::ng-deep .config-tooltip {
+  font-size: 13px !important;
+  max-width: 350px !important;
+  line-height: 1.5 !important;
+  padding: 10px 14px !important;
+  background: rgba(33, 33, 33, 0.95) !important;
+}

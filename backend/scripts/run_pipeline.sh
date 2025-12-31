@@ -54,6 +54,14 @@ poetry run alembic upgrade head
 echo -e "\n${YELLOW}🌐 Ingesting instrument metrics for configured universes...${NC}"
 ./scripts/refresh_universe.sh
 
+# Fetch market sentiment for global universe
+echo -e "\n${YELLOW}🧠 Ingesting market sentiment for global universe...${NC}"
+poetry run python -c "
+from stocker.tasks.market_sentiment import ingest_market_sentiment
+result = ingest_market_sentiment()
+print(f'✓ Market sentiment ingestion completed: {result}')
+"
+
 # Initialize portfolio if not exists
 echo -e "\n${YELLOW}💰 Initializing portfolio...${NC}"
 poetry run python -c "

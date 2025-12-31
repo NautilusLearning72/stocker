@@ -213,11 +213,21 @@ Aggregated sentiment data derived from news/social.
 | :--- | :--- | :--- | :--- |
 | `id` | BIGSERIAL | PK | |
 | `symbol` | VARCHAR(20) | IDX | Nullable if market-wide |
-| `date` | DATE | NOT NULL, IDX | |
+| `date` | DATE | NOT NULL, IDX | Week ending date for the aggregation window |
 | `source` | VARCHAR(50) | NOT NULL | e.g., 'finbert_news', 'twitter_agg' |
+| `period` | VARCHAR(10) | NOT NULL | WEEKLY, DAILY |
+| `window_days` | INTEGER | NOT NULL | Lookback window for aggregation |
 | `sentiment_score` | NUMERIC(5, 4) | NOT NULL | -1.0 (neg) to 1.0 (pos) |
 | `sentiment_magnitude`| NUMERIC(10, 4)| | Confidence or Volume of mentions |
 | `article_count` | INTEGER | | Number of sources aggregated |
+| `positive_count` | INTEGER | | Count of positive mentions |
+| `neutral_count` | INTEGER | | Count of neutral mentions |
+| `negative_count` | INTEGER | | Count of negative mentions |
+| `source_hash` | VARCHAR(64) | | SHA256 of raw payload for audit |
+| `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
+| `updated_at` | TIMESTAMPTZ | | |
+
+*   **Unique Constraint**: `(symbol, date, source, period, window_days)`
 
 #### `market_breadth`
 Broad market health indicators.

@@ -1,0 +1,42 @@
+<div class="summary-container">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-overlay">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <!-- Summary Cards Grid -->
+  <div class="cards-grid" *ngIf="summary">
+    <mat-card *ngFor="let card of cards" class="summary-card" [ngClass]="card.colorClass">
+      <div class="card-icon">
+        <mat-icon>{{ card.icon }}</mat-icon>
+      </div>
+      <div class="card-content">
+        <div class="card-label">
+          {{ card.label }}
+          <mat-icon
+            class="help-icon"
+            [matTooltip]="card.tooltip"
+            matTooltipPosition="above"
+            matTooltipClass="metrics-tooltip">
+            help_outline
+          </mat-icon>
+        </div>
+        <div class="card-value">{{ card.value }}</div>
+      </div>
+    </mat-card>
+  </div>
+
+  <!-- Category Breakdown -->
+  <div class="category-breakdown" *ngIf="summary && categoryBreakdown.length">
+    <span class="breakdown-label">By Category:</span>
+    <span *ngFor="let item of categoryBreakdown" class="category-chip" [ngClass]="'cat-' + item.category">
+      {{ item.category }}: {{ item.count }}
+    </span>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && !summary" class="empty-state">
+    <mat-icon>info</mat-icon>
+    <p>No metrics data available for the selected period.</p>
+  </div>
+</div>

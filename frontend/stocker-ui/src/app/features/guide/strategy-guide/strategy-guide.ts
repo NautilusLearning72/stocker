@@ -10,6 +10,7 @@ interface ParameterRow {
   parameter: string;
   default: string;
   description: string;
+  category?: string;
 }
 
 @Component({
@@ -30,13 +31,48 @@ export class StrategyGuide {
   displayedColumns: string[] = ['parameter', 'default', 'description'];
 
   parameters: ParameterRow[] = [
-    { parameter: 'Lookback Period', default: '126 days', description: 'Trend signal calculation window (~6 months)' },
-    { parameter: 'EWMA Lambda', default: '0.94', description: 'Volatility smoothing factor (RiskMetrics standard)' },
-    { parameter: 'Target Volatility', default: '10%', description: 'Annualized portfolio volatility target' },
-    { parameter: 'Single Instrument Cap', default: '35%', description: 'Maximum exposure per instrument' },
-    { parameter: 'Gross Exposure Cap', default: '150%', description: 'Maximum total leverage (ETFs)' },
-    { parameter: 'Drawdown Threshold', default: '10%', description: 'Circuit breaker trigger level' },
-    { parameter: 'Drawdown Scale', default: '50%', description: 'Position reduction when circuit breaker active' },
-    { parameter: 'Kill Switch', default: '-3% daily', description: 'Maximum acceptable daily loss' }
+    // Strategy Parameters
+    { parameter: 'LOOKBACK_DAYS', default: '126', description: 'Trend signal lookback period (~6 months)', category: 'Strategy' },
+    { parameter: 'EWMA_LAMBDA', default: '0.94', description: 'Volatility smoothing factor (RiskMetrics standard)', category: 'Strategy' },
+    { parameter: 'TARGET_VOL', default: '0.10', description: 'Annualized portfolio volatility target (10%)', category: 'Strategy' },
+
+    // Risk Limits
+    { parameter: 'SINGLE_INSTRUMENT_CAP', default: '0.35', description: 'Maximum exposure per instrument (35%)', category: 'Risk' },
+    { parameter: 'GROSS_EXPOSURE_CAP', default: '1.50', description: 'Maximum total leverage (150%)', category: 'Risk' },
+    { parameter: 'DRAWDOWN_THRESHOLD', default: '0.10', description: 'Circuit breaker trigger level (10%)', category: 'Risk' },
+    { parameter: 'DRAWDOWN_SCALE_FACTOR', default: '0.50', description: 'Position reduction when triggered', category: 'Risk' },
+
+    // Trend Confirmation
+    { parameter: 'CONFIRMATION_ENABLED', default: 'false', description: 'Enable trend confirmation filters', category: 'Confirmation' },
+    { parameter: 'CONFIRMATION_TYPE', default: 'donchian', description: 'Type: donchian | dual_ma | both', category: 'Confirmation' },
+    { parameter: 'DONCHIAN_PERIOD', default: '20', description: 'Donchian channel lookback days', category: 'Confirmation' },
+    { parameter: 'MA_FAST_PERIOD', default: '50', description: 'Fast moving average period', category: 'Confirmation' },
+    { parameter: 'MA_SLOW_PERIOD', default: '200', description: 'Slow moving average period', category: 'Confirmation' },
+
+    // Exit Rules
+    { parameter: 'EXIT_RULES_ENABLED', default: 'false', description: 'Enable position-level exit rules', category: 'Exit Rules' },
+    { parameter: 'TRAILING_STOP_ATR_MULTIPLE', default: '3.0', description: 'ATRs from peak to trigger stop', category: 'Exit Rules' },
+    { parameter: 'ATR_EXIT_MULTIPLE', default: '2.0', description: 'ATRs against entry to exit', category: 'Exit Rules' },
+    { parameter: 'ATR_PERIOD', default: '14', description: 'ATR calculation period', category: 'Exit Rules' },
+    { parameter: 'PERSISTENCE_DAYS', default: '3', description: 'Days signal must persist before flip', category: 'Exit Rules' },
+
+    // Diversification
+    { parameter: 'DIVERSIFICATION_ENABLED', default: 'false', description: 'Enable sector/correlation controls', category: 'Diversification' },
+    { parameter: 'SECTOR_CAP', default: '0.50', description: 'Max exposure per sector (50%)', category: 'Diversification' },
+    { parameter: 'ASSET_CLASS_CAP', default: '0.60', description: 'Max exposure per asset class (60%)', category: 'Diversification' },
+    { parameter: 'CORRELATION_THROTTLE_ENABLED', default: 'false', description: 'Throttle correlated position adds', category: 'Diversification' },
+    { parameter: 'CORRELATION_THRESHOLD', default: '0.70', description: 'Correlation level to trigger throttle', category: 'Diversification' },
+    { parameter: 'CORRELATION_SCALE_FACTOR', default: '0.50', description: 'Scale factor when throttled', category: 'Diversification' },
+
+    // Order Sizing
+    { parameter: 'FRACTIONAL_SIZING_ENABLED', default: 'true', description: 'Allow fractional share orders', category: 'Sizing' },
+    { parameter: 'FRACTIONAL_DECIMALS', default: '4', description: 'Decimal places for fractional qty', category: 'Sizing' },
+    { parameter: 'MIN_NOTIONAL_USD', default: '50.0', description: 'Minimum order size in dollars', category: 'Sizing' },
+    { parameter: 'MIN_NOTIONAL_MODE', default: 'fixed', description: 'Mode: fixed | nav_scaled | liquidity_scaled', category: 'Sizing' },
+    { parameter: 'ALLOW_SHORT_SELLING', default: 'true', description: 'Enable short positions', category: 'Sizing' },
+
+    // Broker
+    { parameter: 'BROKER_MODE', default: 'paper', description: 'Trading mode: paper | live', category: 'Broker' },
+    { parameter: 'ALPACA_BASE_URL', default: 'paper-api.alpaca.markets', description: 'Alpaca API endpoint', category: 'Broker' },
   ];
 }

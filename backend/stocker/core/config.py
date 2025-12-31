@@ -63,10 +63,40 @@ class Settings(BaseSettings):
     DRAWDOWN_THRESHOLD: float = 0.10
     DRAWDOWN_SCALE_FACTOR: float = 0.50
 
+    # Trend Confirmation Settings
+    CONFIRMATION_ENABLED: bool = False
+    CONFIRMATION_TYPE: Literal["donchian", "dual_ma", "both"] = "donchian"
+    DONCHIAN_PERIOD: int = 20
+    MA_FAST_PERIOD: int = 50
+    MA_SLOW_PERIOD: int = 200
+
     # Risk Management
     MIN_NOTIONAL_USD: float = 50.0
     SLIPPAGE_BPS: float = 5.0
     COMMISSION_PER_TRADE: float = 1.0
+    ALLOW_SHORT_SELLING: bool = True
+
+    # Fractional Sizing Settings
+    FRACTIONAL_SIZING_ENABLED: bool = True
+    FRACTIONAL_DECIMALS: int = 4
+    MIN_NOTIONAL_MODE: Literal["fixed", "nav_scaled", "liquidity_scaled"] = "fixed"
+    MIN_NOTIONAL_NAV_BPS: float = 5.0  # 5 bps of NAV as min when nav_scaled
+
+    # Diversification Controls
+    DIVERSIFICATION_ENABLED: bool = False
+    SECTOR_CAP: float = 0.50  # Max 50% per sector
+    ASSET_CLASS_CAP: float = 0.60  # Max 60% per asset class
+    CORRELATION_THROTTLE_ENABLED: bool = False
+    CORRELATION_THRESHOLD: float = 0.70  # Throttle when corr > 0.7
+    CORRELATION_LOOKBACK: int = 60  # 60-day rolling correlation
+    CORRELATION_SCALE_FACTOR: float = 0.50  # Scale new adds by 50% when corr high
+
+    # Exit Rule Settings
+    EXIT_RULES_ENABLED: bool = False
+    TRAILING_STOP_ATR_MULTIPLE: float = 3.0  # Exit if retraces 3 ATRs from peak
+    ATR_EXIT_MULTIPLE: float = 2.0  # Exit if moves 2 ATRs against entry
+    ATR_PERIOD: int = 14  # ATR calculation period
+    PERSISTENCE_DAYS: int = 3  # Days signal must persist before flip
 
     # Market Data Provider
     POLYGON_API_KEY: str = ""
@@ -77,6 +107,22 @@ class Settings(BaseSettings):
     FUNDAMENTALS_REFRESH_MINUTE: int = 0
     FUNDAMENTALS_MAX_RETRIES: int = 3
     FUNDAMENTALS_RETRY_BACKOFF_SEC: float = 1.0
+
+    # Sentiment Data Provider
+    SENTIMENT_PROVIDER: str = "gdelt"
+    SENTIMENT_PERIOD: Literal["DAILY", "WEEKLY"] = "WEEKLY"
+    SENTIMENT_LOOKBACK_DAYS: int = 7
+    SENTIMENT_REFRESH_DAY: int = 0  # Monday
+    SENTIMENT_REFRESH_HOUR: int = 20
+    SENTIMENT_REFRESH_MINUTE: int = 0
+    SENTIMENT_ONLY_MISSING: bool = True
+    SENTIMENT_MAX_RETRIES: int = 3
+    SENTIMENT_RETRY_BACKOFF_SEC: float = 1.0
+    SENTIMENT_REQUEST_TIMEOUT_SEC: float = 10.0
+    SENTIMENT_REQUEST_DELAY_SEC: float = 0.2
+    SENTIMENT_MAX_CONCURRENCY: int = 4
+    SENTIMENT_RATE_LIMIT_PER_SEC: float = 2.0
+    SENTIMENT_MAX_SYMBOLS: int = 0
 
     # Broker Configuration
     BROKER_MODE: Literal["paper", "live"] = "paper"

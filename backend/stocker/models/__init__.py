@@ -26,6 +26,12 @@ from stocker.models.fill import Fill
 from stocker.models.holding import Holding
 from stocker.models.portfolio_state import PortfolioState
 
+# Position Management
+from stocker.models.position_state import PositionState
+
+# Configuration
+from stocker.models.strategy_config import StrategyConfig
+
 __all__ = [
     "TimestampMixin",
     "IdMixin",
@@ -46,4 +52,6 @@ __all__ = [
     "Fill",
     "Holding",
     "PortfolioState",
+    "PositionState",
+    "StrategyConfig",
 ]

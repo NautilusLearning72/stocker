@@ -1,0 +1,170 @@
+<div class="config-container">
+  <!-- Warning Banner -->
+  <mat-card class="warning-banner">
+    <mat-icon>warning</mat-icon>
+    <span>Changes require application restart to take effect</span>
+  </mat-card>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <span>Loading configuration...</span>
+  </div>
+
+  <!-- Error State -->
+  <mat-card class="error-card" *ngIf="error && !loading">
+    <mat-icon>error</mat-icon>
+    <span>{{ error }}</span>
+  </mat-card>
+
+  <!-- Config Tabs -->
+  <mat-card *ngIf="!loading && !error">
+    <mat-tab-group>
+      <mat-tab *ngFor="let category of categories">
+        <ng-template mat-tab-label>
+          <span>{{ category.displayName }}</span>
+          <span class="dirty-badge" *ngIf="getCategoryDirtyCount(category) > 0">
+            {{ getCategoryDirtyCount(category) }}
+          </span>
+        </ng-template>
+
+        <div class="tab-content">
+          <div class="config-form">
+            <div class="config-field" *ngFor="let field of category.fields">
+              <!-- Boolean Toggle -->
+              <div class="field-row" *ngIf="field.value_type === 'bool'">
+                <div class="toggle-row">
+                  <mat-slide-toggle
+                    [checked]="getBoolValue(field)"
+                    (change)="setBoolValue(field, $event.checked)"
+                    [class.dirty]="field.isDirty">
+                    {{ formatKey(field.key) }}
+                  </mat-slide-toggle>
+                  <mat-icon
+                    *ngIf="field.tooltip"
+                    class="help-icon"
+                    [matTooltip]="field.tooltip"
+                    matTooltipPosition="right"
+                    matTooltipClass="config-tooltip">
+                    help_outline
+                  </mat-icon>
+                </div>
+                <span class="field-description">{{ field.description }}</span>
+              </div>
+
+              <!-- Select (String with options) -->
+              <div class="field-row" *ngIf="field.value_type === 'str' && field.options">
+                <div class="input-with-help">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ formatKey(field.key) }}</mat-label>
+                    <mat-select
+                      [(ngModel)]="field.value"
+                      (ngModelChange)="onFieldChange(field)"
+                      [class.dirty]="field.isDirty">
+                      <mat-option *ngFor="let opt of field.options" [value]="opt">
+                        {{ opt }}
+                      </mat-option>
+                    </mat-select>
+                    <mat-hint>{{ field.description }}</mat-hint>
+                  </mat-form-field>
+                  <mat-icon
+                    *ngIf="field.tooltip"
+                    class="help-icon"
+                    [matTooltip]="field.tooltip"
+                    matTooltipPosition="right"
+                    matTooltipClass="config-tooltip">
+                    help_outline
+                  </mat-icon>
+                </div>
+              </div>
+
+              <!-- Text Input (String without options) -->
+              <div class="field-row" *ngIf="field.value_type === 'str' && !field.options">
+                <div class="input-with-help">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ formatKey(field.key) }}</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="field.value"
+                      (ngModelChange)="onFieldChange(field)"
+                      [class.dirty]="field.isDirty">
+                    <mat-hint>{{ field.description }}</mat-hint>
+                  </mat-form-field>
+                  <mat-icon
+                    *ngIf="field.tooltip"
+                    class="help-icon"
+                    [matTooltip]="field.tooltip"
+                    matTooltipPosition="right"
+                    matTooltipClass="config-tooltip">
+                    help_outline
+                  </mat-icon>
+                </div>
+              </div>
+
+              <!-- Number Input (int/float) -->
+              <div class="field-row" *ngIf="field.value_type === 'int' || field.value_type === 'float'">
+                <div class="input-with-help">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ formatKey(field.key) }}</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      [(ngModel)]="field.value"
+                      (ngModelChange)="onFieldChange(field)"
+                      [step]="field.value_type === 'float' ? 0.01 : 1"
+                      [attr.min]="field.min ?? null"
+                      [attr.max]="field.max ?? null"
+                      [class.dirty]="field.isDirty">
+                    <mat-hint>
+                      {{ field.description }}
+                      <span *ngIf="field.min !== undefined || field.max !== undefined" class="range-hint">
+                        ({{ field.min !== undefined ? field.min : '-∞' }} - {{ field.max !== undefined ? field.max : '∞' }})
+                      </span>
+                    </mat-hint>
+                  </mat-form-field>
+                  <mat-icon
+                    *ngIf="field.tooltip"
+                    class="help-icon"
+                    [matTooltip]="field.tooltip"
+                    matTooltipPosition="right"
+                    matTooltipClass="config-tooltip">
+                    help_outline
+                  </mat-icon>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-actions">
+            <button
+              mat-button
+              (click)="resetCategory(category)"
+              [disabled]="getCategoryDirtyCount(category) === 0 || saving">
+              Reset
+            </button>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="saveCategory(category)"
+              [disabled]="getCategoryDirtyCount(category) === 0 || saving">
+              <mat-icon *ngIf="saving">sync</mat-icon>
+              Save {{ category.displayName }}
+            </button>
+          </div>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <!-- Global Actions -->
+    <div class="global-actions" *ngIf="getTotalDirtyCount() > 0">
+      <span class="changes-summary">{{ getTotalDirtyCount() }} unsaved change(s)</span>
+      <button mat-button (click)="resetAll()" [disabled]="saving">
+        Reset All
+      </button>
+      <button mat-raised-button color="accent" (click)="saveAll()" [disabled]="saving">
+        <mat-icon *ngIf="saving">sync</mat-icon>
+        Save All Changes
+      </button>
+    </div>
+  </mat-card>
+</div>

@@ -231,6 +231,65 @@
             </div>
         </mat-expansion-panel>
 
+        <!-- Trend Confirmation -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>verified</mat-icon>
+                    Trend Confirmation (Optional)
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    <strong>Optional filters</strong> to reduce false signals in choppy or ranging markets.
+                    When enabled, the momentum signal must be confirmed before taking a position.
+                </p>
+
+                <div class="limit-card">
+                    <strong>Status: Disabled by Default</strong>
+                    <p>Set <code>CONFIRMATION_ENABLED=true</code> to activate.</p>
+                </div>
+
+                <h4>Donchian Breakout Confirmation</h4>
+                <p>Price must break the N-day channel to confirm the trend:</p>
+                <ul>
+                    <li><strong>Long Signal:</strong> Current price >= 20-day high</li>
+                    <li><strong>Short Signal:</strong> Current price <= 20-day low</li>
+                </ul>
+                <div class="formula">
+                    For longs: P<sub>current</sub> >= max(P<sub>t-1</sub>, ..., P<sub>t-20</sub>)
+                </div>
+
+                <h4>Dual Moving Average Confirmation</h4>
+                <p>Fast and slow moving averages must align with trend direction:</p>
+                <ul>
+                    <li><strong>Long Signal:</strong> 50-day MA > 200-day MA</li>
+                    <li><strong>Short Signal:</strong> 50-day MA < 200-day MA</li>
+                </ul>
+
+                <h4>Confirmation Types</h4>
+                <table class="example-table">
+                    <tr>
+                        <th>Type</th>
+                        <th>Requirement</th>
+                    </tr>
+                    <tr>
+                        <td><code>donchian</code></td>
+                        <td>Price breakout only (default)</td>
+                    </tr>
+                    <tr>
+                        <td><code>dual_ma</code></td>
+                        <td>MA cross only</td>
+                    </tr>
+                    <tr>
+                        <td><code>both</code></td>
+                        <td>Both must confirm (most conservative)</td>
+                    </tr>
+                </table>
+            </div>
+        </mat-expansion-panel>
+
         <!-- Volatility Estimation -->
         <mat-expansion-panel>
             <mat-expansion-panel-header>
@@ -371,16 +430,222 @@
             </div>
         </mat-expansion-panel>
 
-        <!-- Parameters Reference -->
+        <!-- Exit Rules -->
         <mat-expansion-panel>
             <mat-expansion-panel-header>
                 <mat-panel-title>
-                    <mat-icon>tune</mat-icon>
-                    Parameters Reference
+                    <mat-icon>exit_to_app</mat-icon>
+                    Exit Rules (Optional)
                 </mat-panel-title>
             </mat-expansion-panel-header>
 
             <div class="section-content">
+                <p>
+                    <strong>Position-level exit rules</strong> provide faster exits than waiting for signals to flip.
+                    These protect individual positions using price-based triggers.
+                </p>
+
+                <div class="limit-card">
+                    <strong>Status: Disabled by Default</strong>
+                    <p>Set <code>EXIT_RULES_ENABLED=true</code> to activate.</p>
+                </div>
+
+                <h4>Trailing Stop</h4>
+                <p>Exit if price retraces X ATRs from peak since entry:</p>
+                <ul>
+                    <li><strong>Long:</strong> Exit if price drops 3 ATRs below highest price since entry</li>
+                    <li><strong>Short:</strong> Exit if price rises 3 ATRs above lowest price since entry</li>
+                </ul>
+                <div class="formula">
+                    Trigger: (Peak Price - Current Price) > 3 x ATR
+                </div>
+
+                <h4>ATR Exit</h4>
+                <p>Exit if price moves Y ATRs against entry price:</p>
+                <div class="formula">
+                    Trigger: |Entry Price - Current Price| > 2 x ATR
+                </div>
+
+                <h4>Persistence Filter</h4>
+                <p>Prevents whipsaws by requiring signal to persist before flipping:</p>
+                <ul>
+                    <li>Signal must persist for <strong>3 consecutive days</strong> before position flips</li>
+                    <li>Reduces trading frequency in choppy markets</li>
+                </ul>
+
+                <h4>ATR Calculation</h4>
+                <p>Average True Range measures volatility using high/low/close:</p>
+                <div class="formula">
+                    TR = max(High - Low, |High - Close<sub>prev</sub>|, |Low - Close<sub>prev</sub>|)<br>
+                    ATR = 14-day average of TR
+                </div>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Diversification Controls -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>scatter_plot</mat-icon>
+                    Diversification Controls (Optional)
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    <strong>Bucket caps and correlation awareness</strong> prevent concentration
+                    in sectors or correlated assets.
+                </p>
+
+                <div class="limit-card">
+                    <strong>Status: Disabled by Default</strong>
+                    <p>Set <code>DIVERSIFICATION_ENABLED=true</code> to activate.</p>
+                </div>
+
+                <h4>Sector Caps</h4>
+                <div class="limit-card">
+                    <strong>Maximum 50% per GICS Sector</strong>
+                    <p>Total exposure to any single sector (Technology, Healthcare, etc.) is capped.</p>
+                    <p>Uses <code>InstrumentInfo.sector</code> field from database.</p>
+                </div>
+
+                <h4>Asset Class Caps</h4>
+                <div class="limit-card">
+                    <strong>Maximum 60% per Asset Class</strong>
+                    <p>Total exposure to any asset class (Equity, Fixed Income, Commodity) is capped.</p>
+                </div>
+
+                <h4>Correlation Throttle</h4>
+                <p>Reduces position adds when highly correlated with existing holdings:</p>
+                <ul>
+                    <li><strong>Threshold:</strong> Correlation > 0.70 triggers throttle</li>
+                    <li><strong>Action:</strong> New position scaled to 50% of target</li>
+                    <li><strong>Lookback:</strong> 60-day rolling correlation window</li>
+                </ul>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Order Sizing -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>straighten</mat-icon>
+                    Order Sizing
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    Orders are sized with support for <strong>fractional shares</strong> and dynamic
+                    minimum notional thresholds.
+                </p>
+
+                <h4>Fractional Sizing</h4>
+                <div class="limit-card">
+                    <strong>Enabled by Default</strong>
+                    <p>Supports up to 4 decimal places for precise position sizing.</p>
+                    <p>Compatible with Alpaca fractional share orders.</p>
+                </div>
+
+                <h4>Minimum Notional</h4>
+                <p>Orders below the minimum threshold are skipped to avoid churn:</p>
+                <table class="example-table">
+                    <tr>
+                        <th>Mode</th>
+                        <th>Calculation</th>
+                    </tr>
+                    <tr>
+                        <td><code>fixed</code></td>
+                        <td>$50 minimum (default)</td>
+                    </tr>
+                    <tr>
+                        <td><code>nav_scaled</code></td>
+                        <td>max($50, 5 bps of NAV)</td>
+                    </tr>
+                    <tr>
+                        <td><code>liquidity_scaled</code></td>
+                        <td>max($50, 0.1% of avg volume)</td>
+                    </tr>
+                </table>
+
+                <h4>Short Selling</h4>
+                <div class="limit-card">
+                    <strong>Enabled by Default</strong>
+                    <p>Set <code>ALLOW_SHORT_SELLING=false</code> to disable.</p>
+                    <p>When disabled, only long positions are taken.</p>
+                </div>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Observability & Metrics -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>analytics</mat-icon>
+                    Observability & Metrics
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    The system emits <strong>structured metrics</strong> for all trading decisions,
+                    enabling real-time monitoring and debugging.
+                </p>
+
+                <h4>Metrics API Endpoints</h4>
+                <table class="example-table">
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Description</th>
+                    </tr>
+                    <tr>
+                        <td><code>/api/v1/metrics/summary</code></td>
+                        <td>Aggregated metrics over time period</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/v1/metrics/events</code></td>
+                        <td>Recent metric events with filtering</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/v1/metrics/stream</code></td>
+                        <td>Real-time SSE stream</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/v1/metrics/categories</code></td>
+                        <td>Available metric categories</td>
+                    </tr>
+                </table>
+
+                <h4>Metric Categories</h4>
+                <ul>
+                    <li><strong>signal</strong> - Signal generation, confirmation checks</li>
+                    <li><strong>exit</strong> - Trailing stops, ATR exits, persistence blocks</li>
+                    <li><strong>diversification</strong> - Sector caps, correlation throttles</li>
+                    <li><strong>order</strong> - Order sizing, skipped orders, created orders</li>
+                    <li><strong>risk</strong> - Single caps, gross exposure, drawdown scaling</li>
+                    <li><strong>pipeline</strong> - Batch processing completion</li>
+                </ul>
+
+                <h4>Redis Stream</h4>
+                <p>All metrics are published to the <code>metrics</code> Redis stream for real-time consumers.</p>
+            </div>
+        </mat-expansion-panel>
+
+        <!-- Configuration Reference -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>settings</mat-icon>
+                    Configuration Reference
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    All configuration is loaded from environment variables via <code>config.py</code>.
+                    Set values in your <code>.env</code> file or system environment.
+                </p>
+
                 <table mat-table [dataSource]="parameters" class="param-table mat-elevation-z1">
                     <ng-container matColumnDef="parameter">
                         <th mat-header-cell *matHeaderCellDef>Parameter</th>

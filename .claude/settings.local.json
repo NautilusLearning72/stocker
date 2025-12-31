@@ -12,7 +12,11 @@
       "Bash(chmod:*)",
       "Bash(timeout 30 poetry run python:*)",
       "Bash(__NEW_LINE__ echo \"\")",
-      "Bash(npx ng build:*)"
+      "Bash(npx ng build:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

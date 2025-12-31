@@ -1,0 +1,85 @@
+<div class="metrics-dashboard">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1 class="page-title">
+      <mat-icon>analytics</mat-icon>
+      Metrics Dashboard
+    </h1>
+
+    <div class="header-controls">
+      <!-- Time Range Selector -->
+      <mat-form-field appearance="outline" class="time-select">
+        <mat-label>Time Range</mat-label>
+        <mat-select [(ngModel)]="selectedHours" (selectionChange)="onTimeRangeChange()">
+          <mat-option *ngFor="let opt of hourOptions" [value]="opt.value">
+            {{ opt.label }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Real-time Toggle -->
+      <div class="live-toggle">
+        <mat-slide-toggle
+          [(ngModel)]="isLive"
+          (change)="onLiveToggle()"
+          color="primary">
+          Live
+        </mat-slide-toggle>
+        <span class="connection-indicator" [ngClass]="connectionStatus">
+          <mat-icon *ngIf="connectionStatus === 'connected'">wifi</mat-icon>
+          <mat-icon *ngIf="connectionStatus === 'connecting'" class="spinning">sync</mat-icon>
+          <mat-icon *ngIf="connectionStatus === 'disconnected'">wifi_off</mat-icon>
+        </span>
+      </div>
+
+      <!-- Refresh Button -->
+      <button
+        mat-icon-button
+        (click)="refresh()"
+        [disabled]="loadingSummary || loadingEvents"
+        matTooltip="Refresh data">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Section -->
+  <section class="section summary-section">
+    <div class="section-header">
+      <h2>System Activity Overview</h2>
+      <p class="help-text">
+        Key metrics showing what the trading system has been doing. Hover over the
+        <mat-icon class="inline-icon">help_outline</mat-icon> icons for explanations.
+      </p>
+    </div>
+    <mat-card>
+      <mat-card-content>
+        <app-metrics-summary
+          [summary]="summary"
+          [loading]="loadingSummary">
+        </app-metrics-summary>
+      </mat-card-content>
+    </mat-card>
+  </section>
+
+  <!-- Event Feed Section -->
+  <section class="section events-section">
+    <div class="section-header">
+      <h2>Event Feed</h2>
+      <p class="help-text">
+        Detailed log of individual events. Use filters to focus on specific categories or symbols.
+        Hover over event names for descriptions.
+      </p>
+    </div>
+    <mat-card>
+      <mat-card-content>
+        <app-event-feed
+          [events]="events"
+          [loading]="loadingEvents"
+          [isLive]="isLive"
+          (filtersChanged)="onFiltersChange($event)">
+        </app-event-feed>
+      </mat-card-content>
+    </mat-card>
+  </section>
+</div>

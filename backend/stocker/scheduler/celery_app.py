@@ -26,4 +26,12 @@ app.conf.beat_schedule = {
             minute=settings.FUNDAMENTALS_REFRESH_MINUTE,
         ),
     },
+    "ingest-market-sentiment": {
+        "task": "stocker.tasks.market_sentiment.ingest_market_sentiment",
+        "schedule": crontab(
+            day_of_week=settings.SENTIMENT_REFRESH_DAY,
+            hour=settings.SENTIMENT_REFRESH_HOUR,
+            minute=settings.SENTIMENT_REFRESH_MINUTE,
+        ),
+    },
 }

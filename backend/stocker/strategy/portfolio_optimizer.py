@@ -1,7 +1,16 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from datetime import date
+import pandas as pd
+
 from stocker.strategy.signal_strategy import Signal
+from stocker.strategy.diversification import (
+    DiversificationEngine,
+    DiversificationConfig,
+    InstrumentMeta
+)
+from stocker.core.metrics import metrics
+
 
 @dataclass
 class RiskConfig:
@@ -10,6 +19,14 @@ class RiskConfig:
     gross_exposure_cap: float = 1.50
     drawdown_threshold: float = 0.10
     drawdown_scale_factor: float = 0.50
+    # Diversification settings
+    diversification_enabled: bool = False
+    sector_cap: float = 0.50
+    asset_class_cap: float = 0.60
+    correlation_throttle_enabled: bool = False
+    correlation_threshold: float = 0.70
+    correlation_lookback: int = 60
+    correlation_scale_factor: float = 0.50
 
 @dataclass
 class TargetExposure:
@@ -21,60 +38,119 @@ class TargetExposure:
 class PortfolioOptimizer:
     """
     Transforms raw signals into target portfolio exposures.
-    Applies risk caps and leverage constraints.
+    Applies risk caps, leverage constraints, and diversification controls.
     """
-    
+
     def __init__(self, config: RiskConfig):
         self.config = config
+        # Initialize diversification engine
+        self.diversification = DiversificationEngine(DiversificationConfig(
+            enabled=config.diversification_enabled,
+            sector_cap=config.sector_cap,
+            asset_class_cap=config.asset_class_cap,
+            correlation_throttle_enabled=config.correlation_throttle_enabled,
+            correlation_threshold=config.correlation_threshold,
+            correlation_lookback=config.correlation_lookback,
+            correlation_scale_factor=config.correlation_scale_factor
+        ))
 
-    def compute_targets(self, signals: List[Signal], current_drawdown: float = 0.0) -> List[TargetExposure]:
+    def compute_targets(
+        self,
+        signals: List[Signal],
+        current_drawdown: float = 0.0,
+        instrument_metadata: Optional[Dict[str, InstrumentMeta]] = None,
+        returns: Optional[pd.DataFrame] = None,
+        current_positions: Optional[Dict[str, float]] = None
+    ) -> List[TargetExposure]:
         """
         Compute final target weights for a list of signals.
+
+        Args:
+            signals: List of Signal objects with raw weights
+            current_drawdown: Current portfolio drawdown (0.0 to 1.0)
+            instrument_metadata: Optional symbol -> InstrumentMeta mapping
+            returns: Optional historical returns for correlation
+            current_positions: Optional current position weights
+
+        Returns:
+            List of TargetExposure objects with final weights
         """
         targets = []
         raw_exposures = {s.symbol: s.raw_weight for s in signals}
-        
+
         # 1. Apply Drawdown Scaling
         scale_factor = 1.0
         drawdown_reason = None
         if current_drawdown > self.config.drawdown_threshold:
             scale_factor = self.config.drawdown_scale_factor
             drawdown_reason = f"Drawdown {current_drawdown:.1%} > {self.config.drawdown_threshold:.1%}"
-        
-        # 2. Process each signal through caps
+
+            # Emit drawdown scaling metric
+            metrics.drawdown_scaling(
+                drawdown=current_drawdown,
+                threshold=self.config.drawdown_threshold,
+                scale_factor=scale_factor
+            )
+
+        # 2. Calculate gross exposure for scaling
         current_gross = sum(abs(w) for w in raw_exposures.values()) * scale_factor
-        
-        # If gross exposure > cap, we need to scalar down EVERYTHING
+
+        # If gross exposure > cap, scale down everything
         gross_scaler = 1.0
         if current_gross > self.config.gross_exposure_cap:
-             gross_scaler = self.config.gross_exposure_cap / current_gross
-             
+            gross_scaler = self.config.gross_exposure_cap / current_gross
+
+            # Emit gross exposure scaling metric
+            metrics.gross_exposure_scaled(
+                gross_before=current_gross,
+                gross_after=self.config.gross_exposure_cap,
+                scale_factor=gross_scaler
+            )
+
+        # 3. Process each signal through individual caps
         for signal in signals:
             weight = signal.raw_weight * scale_factor
-            
-            # Check Single Asset Cap
+
             reason = []
             is_capped = False
-            
+
+            # Single instrument cap
             if abs(weight) > self.config.single_instrument_cap:
+                original_weight = weight
                 weight = self.config.single_instrument_cap * (1 if weight > 0 else -1)
                 is_capped = True
                 reason.append(f"Capped at {self.config.single_instrument_cap:.0%}")
-            
-            # Apply Gross Scalar
+
+                # Emit single cap metric
+                metrics.single_cap_applied(
+                    symbol=signal.symbol,
+                    weight_before=abs(original_weight),
+                    cap=self.config.single_instrument_cap
+                )
+
+            # Apply gross exposure scaler
             if gross_scaler < 1.0:
                 weight *= gross_scaler
                 is_capped = True
                 reason.append(f"Gross exposure scaled by {gross_scaler:.2f}")
-                
+
             if drawdown_reason:
                 reason.append(drawdown_reason)
-                
+
             targets.append(TargetExposure(
                 symbol=signal.symbol,
                 target_exposure=round(weight, 4),
                 is_capped=is_capped,
                 reason="; ".join(reason) if reason else None
             ))
-            
+
+        # 4. Apply diversification controls
+        if instrument_metadata:
+            targets = self.diversification.apply_all(
+                targets=targets,
+                metadata=instrument_metadata,
+                returns=returns,
+                current_positions=current_positions
+            )
+
         return targets

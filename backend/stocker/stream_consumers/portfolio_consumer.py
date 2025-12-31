@@ -10,7 +10,9 @@ from stocker.core.database import AsyncSessionLocal
 from stocker.core.redis import StreamNames
 from stocker.models.signal import Signal as SignalModel
 from stocker.models.target_exposure import TargetExposure as TargetModel
+from stocker.models.instrument_info import InstrumentInfo
 from stocker.strategy.portfolio_optimizer import PortfolioOptimizer, RiskConfig, TargetExposure, Signal
+from stocker.strategy.diversification import InstrumentMeta
 from stocker.models.portfolio_state import PortfolioState
 
 logger = logging.getLogger(__name__)
@@ -33,7 +35,15 @@ class PortfolioConsumer(BaseStreamConsumer):
             single_instrument_cap=settings.SINGLE_INSTRUMENT_CAP,
             gross_exposure_cap=settings.GROSS_EXPOSURE_CAP,
             drawdown_threshold=settings.DRAWDOWN_THRESHOLD,
-            drawdown_scale_factor=settings.DRAWDOWN_SCALE_FACTOR
+            drawdown_scale_factor=settings.DRAWDOWN_SCALE_FACTOR,
+            # Diversification settings
+            diversification_enabled=settings.DIVERSIFICATION_ENABLED,
+            sector_cap=settings.SECTOR_CAP,
+            asset_class_cap=settings.ASSET_CLASS_CAP,
+            correlation_throttle_enabled=settings.CORRELATION_THROTTLE_ENABLED,
+            correlation_threshold=settings.CORRELATION_THRESHOLD,
+            correlation_lookback=settings.CORRELATION_LOOKBACK,
+            correlation_scale_factor=settings.CORRELATION_SCALE_FACTOR
         ))
 
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
@@ -74,7 +84,20 @@ class PortfolioConsumer(BaseStreamConsumer):
             stmt = select(SignalModel).where(SignalModel.date == target_date)
             result = await session.execute(stmt)
             signal_models = result.scalars().all()
-            
+
+            # 3. Fetch instrument metadata for diversification
+            instrument_metadata: Dict[str, InstrumentMeta] = {}
+            if settings.DIVERSIFICATION_ENABLED and signal_models:
+                symbols = [s.symbol for s in signal_models]
+                stmt = select(InstrumentInfo).where(InstrumentInfo.symbol.in_(symbols))
+                result = await session.execute(stmt)
+                for info in result.scalars().all():
+                    instrument_metadata[info.symbol] = InstrumentMeta(
+                        symbol=info.symbol,
+                        sector=info.sector or "Unknown",
+                        asset_class=info.asset_class or "US_EQUITY"
+                    )
+
         if not signal_models:
             logger.warning(f"No signals found for {target_date}??")
             return
@@ -91,10 +114,14 @@ class PortfolioConsumer(BaseStreamConsumer):
                 strategy_version=s.strategy_version
             ))
             
-        # 3. Optimize
-        targets = self.optimizer.compute_targets(signals_obj, current_drawdown)
+        # 4. Optimize (with diversification if enabled)
+        targets = self.optimizer.compute_targets(
+            signals=signals_obj,
+            current_drawdown=current_drawdown,
+            instrument_metadata=instrument_metadata if instrument_metadata else None
+        )
         
-        # 4. Save Targets to DB
+        # 5. Save Targets to DB
         async with AsyncSessionLocal() as session:
             from sqlalchemy.dialects.postgresql import insert
             

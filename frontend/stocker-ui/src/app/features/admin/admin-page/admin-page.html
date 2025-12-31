@@ -1,0 +1,38 @@
+<div class="admin-page">
+  <h1 class="page-title">
+    <mat-icon>admin_panel_settings</mat-icon>
+    Admin
+  </h1>
+
+  <mat-tab-group animationDuration="200ms">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>monitor_heart</mat-icon>
+        <span>System Health</span>
+      </ng-template>
+      <div class="tab-content">
+        <app-system-health></app-system-health>
+      </div>
+    </mat-tab>
+
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>settings</mat-icon>
+        <span>Configuration</span>
+      </ng-template>
+      <div class="tab-content">
+        <app-config></app-config>
+      </div>
+    </mat-tab>
+
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>receipt_long</mat-icon>
+        <span>Order Audit</span>
+      </ng-template>
+      <div class="tab-content">
+        <app-order-audit></app-order-audit>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

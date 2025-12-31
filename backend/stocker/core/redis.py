@@ -65,6 +65,7 @@ class StreamNames:
     FILLS = "fills"
     PORTFOLIO_STATE = "portfolio-state"
     ALERTS = "alerts"
+    METRICS = "metrics"  # Observability metrics stream
 
 
 # Consumer Group Names
