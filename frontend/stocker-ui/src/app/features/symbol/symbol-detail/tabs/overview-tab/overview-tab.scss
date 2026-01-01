@@ -1,0 +1,139 @@
+.overview-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chart-card {
+  mat-card-content {
+    padding: 16px !important;
+  }
+}
+
+.chart-header {
+  margin-bottom: 16px;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.time-toggle,
+.chart-type-toggle {
+  ::ng-deep .mat-button-toggle-label-content {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}
+
+.chart-container {
+  height: 350px;
+}
+
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 350px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  mat-card-content {
+    padding: 16px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.stat-label {
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #2c3e50;
+
+  &.price-value {
+    font-family: monospace;
+  }
+}
+
+.stat-change {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  font-family: monospace;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &.positive {
+    color: #4caf50;
+  }
+
+  &.negative {
+    color: #f44336;
+  }
+}
+
+.info-card {
+  h3 {
+    margin: 0 0 16px 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #2c3e50;
+  }
+
+  mat-card-content {
+    padding: 20px !important;
+  }
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 0.9375rem;
+  color: #333;
+}
+
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+}

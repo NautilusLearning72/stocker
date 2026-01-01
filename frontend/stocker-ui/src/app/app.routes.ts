@@ -5,6 +5,7 @@ import { MetricsDashboard } from './features/metrics/metrics-dashboard/metrics-d
 import { AdminPage } from './features/admin/admin-page/admin-page';
 import { StrategyGuide } from './features/guide/strategy-guide/strategy-guide';
 import { UniverseManager } from './features/universe/universe-manager';
+import { SymbolDetailPage } from './features/symbol/symbol-detail/symbol-detail';
 
 export const routes: Routes = [
     { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -14,4 +15,5 @@ export const routes: Routes = [
     { path: 'admin', component: AdminPage },
     { path: 'guide', component: StrategyGuide },
     { path: 'universes', component: UniverseManager },
+    { path: 'symbol/:symbol', component: SymbolDetailPage },
 ];

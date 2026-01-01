@@ -6,8 +6,8 @@
         <mat-card-content>
             <div class="value">
                 <ng-container [ngSwitch]="metric.format">
-                    <span *ngSwitchCase="'currency'">{{ metric.value | currency }}</span>
-                    <span *ngSwitchCase="'percent'">{{ metric.value }}%</span>
+                    <span *ngSwitchCase="'currency'">{{ metric.value | currency:'USD':'symbol':(metric.digits || '1.2-2') }}</span>
+                    <span *ngSwitchCase="'percent'">{{ metric.value | number:(metric.digits || '1.2-2') }}%</span>
                     <span *ngSwitchDefault>{{ metric.value }}</span>
                 </ng-container>
             </div>

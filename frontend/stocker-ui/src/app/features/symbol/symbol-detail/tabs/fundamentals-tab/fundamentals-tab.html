@@ -1,0 +1,23 @@
+<div class="fundamentals-tab">
+  <div class="no-data" *ngIf="!metrics">
+    <p>No fundamental data available for this symbol.</p>
+  </div>
+
+  <div class="sections" *ngIf="metrics">
+    <mat-card *ngFor="let section of getSections()" class="section-card">
+      <mat-card-content>
+        <h3 class="section-title">{{ section.title }}</h3>
+        <div class="metrics-grid">
+          <div class="metric-item" *ngFor="let item of section.metrics">
+            <app-metric-tooltip [metric]="item.key"></app-metric-tooltip>
+            <div class="metric-value">{{ formatValue(item) }}</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <div class="data-note" *ngIf="metrics.as_of_date">
+      Data as of {{ metrics.as_of_date }} ({{ metrics.period_type }})
+    </div>
+  </div>
+</div>

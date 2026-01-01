@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -64,7 +64,8 @@ export class Config implements OnInit {
 
   constructor(
     private configService: ConfigService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -120,7 +121,7 @@ export class Config implements OnInit {
         sizing: 'Sizing',
       };
 
-      this.categories = categoryOrder
+      const categories = categoryOrder
         .filter(cat => categoryMap.has(cat))
         .map(cat => ({
           name: cat,
@@ -128,10 +129,17 @@ export class Config implements OnInit {
           fields: categoryMap.get(cat)!.sort((a, b) => a.key.localeCompare(b.key)),
         }));
 
-      this.loading = false;
+      Promise.resolve().then(() => {
+        this.categories = categories;
+        this.loading = false;
+        this.cdr.detectChanges();
+      });
     }).catch(err => {
-      this.error = 'Failed to load configuration';
-      this.loading = false;
+      Promise.resolve().then(() => {
+        this.error = 'Failed to load configuration';
+        this.loading = false;
+        this.cdr.detectChanges();
+      });
       console.error('Config load error:', err);
     });
   }

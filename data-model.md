@@ -64,8 +64,11 @@ Splits and dividends (sourced from yfinance/Alpaca).
 | `date` | DATE | NOT NULL, IDX | Ex-date |
 | `action_type` | VARCHAR(20) | CHECK (SPLIT, DIVIDEND) | |
 | `value` | NUMERIC(14, 4) | NOT NULL | Dividend amount or Split ratio |
+| `source` | VARCHAR(50) | NOT NULL | e.g., 'yfinance', 'alpaca' |
+| `source_hash` | VARCHAR(64) | | SHA256 of raw payload |
 | `created_at` | TIMESTAMPTZ | DEFAULT NOW() | |
 
+*   **Unique Constraint**: `(symbol, date, action_type, source)`
 ---
 
 ### 2.2 Metadata & Fundamentals
@@ -349,6 +352,32 @@ Current positions (Snapshot).
 | `qty` | NUMERIC(12, 4) | NOT NULL | Current quantity |
 | `cost_basis` | NUMERIC(14, 4) | NOT NULL | Avg entry price |
 | `market_value` | NUMERIC(18, 4) | NOT NULL | Qty * Current Price |
+
+#### `position_snapshots`
+Broker-enriched positions for UI and P&L reporting.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | BIGSERIAL | PK | |
+| `portfolio_id` | VARCHAR(50) | NOT NULL | |
+| `date` | DATE | NOT NULL | Snapshot date |
+| `symbol` | VARCHAR(20) | NOT NULL | |
+| `side` | VARCHAR(10) | | LONG or SHORT |
+| `qty` | NUMERIC(18, 4) | NOT NULL | Signed quantity |
+| `avg_entry_price` | NUMERIC(14, 4) | | Broker avg entry |
+| `cost_basis` | NUMERIC(18, 4) | | Broker cost basis |
+| `market_value` | NUMERIC(18, 4) | | Broker market value |
+| `current_price` | NUMERIC(14, 4) | | Last price |
+| `lastday_price` | NUMERIC(14, 4) | | Prior close |
+| `change_today` | NUMERIC(12, 6) | | Intraday change |
+| `unrealized_pl` | NUMERIC(18, 4) | | Total P&L |
+| `unrealized_plpc` | NUMERIC(10, 6) | | Total P&L % |
+| `unrealized_intraday_pl` | NUMERIC(18, 4) | | Today's P&L |
+| `unrealized_intraday_plpc` | NUMERIC(10, 6) | | Today's P&L % |
+| `asset_class` | VARCHAR(20) | | Asset class |
+| `exchange` | VARCHAR(20) | | Exchange |
+| `source` | VARCHAR(20) | NOT NULL | Data source |
+| `as_of_ts` | TIMESTAMP | | Snapshot timestamp |
 
 ---
 

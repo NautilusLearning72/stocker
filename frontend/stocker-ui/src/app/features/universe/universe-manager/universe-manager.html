@@ -53,7 +53,7 @@
           <ng-container matColumnDef="symbol">
             <th mat-header-cell *matHeaderCellDef>Symbol</th>
             <td mat-cell *matCellDef="let sym">
-              <div class="chip-symbol">{{ sym }}</div>
+              <app-symbol-link [symbol]="sym"></app-symbol-link>
               <div class="chip-name">{{ instrumentNames[sym] || '—' }}</div>
             </td>
           </ng-container>
@@ -87,7 +87,7 @@
             <ng-container matColumnDef="symbol">
               <th mat-header-cell *matHeaderCellDef>Symbol</th>
               <td mat-cell *matCellDef="let sym">
-                <div class="chip-symbol">{{ sym }}</div>
+                <app-symbol-link [symbol]="sym"></app-symbol-link>
                 <div class="chip-name">{{ instrumentNames[sym] || '—' }}</div>
               </td>
             </ng-container>

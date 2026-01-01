@@ -25,6 +25,7 @@ from stocker.models.fill import Fill
 # Accounting
 from stocker.models.holding import Holding
 from stocker.models.portfolio_state import PortfolioState
+from stocker.models.position_snapshot import PositionSnapshot
 
 # Position Management
 from stocker.models.position_state import PositionState
@@ -52,6 +53,7 @@ __all__ = [
     "Fill",
     "Holding",
     "PortfolioState",
+    "PositionSnapshot",
     "PositionState",
     "StrategyConfig",
 ]

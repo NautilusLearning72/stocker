@@ -1,0 +1,62 @@
+<div class="symbol-detail-container">
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p>Loading {{ symbol }}...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="error && !loading">
+    <mat-icon class="error-icon">error_outline</mat-icon>
+    <p class="error-message">{{ error }}</p>
+  </div>
+
+  <!-- Content -->
+  <ng-container *ngIf="detail && !loading">
+    <!-- Header -->
+    <div class="symbol-header">
+      <div class="symbol-title">
+        <h1 class="symbol-ticker">{{ detail.symbol }}</h1>
+        <span class="company-name">{{ detail.name || 'Unknown Company' }}</span>
+      </div>
+      <div class="symbol-badges">
+        <mat-chip *ngIf="detail.sector" class="badge sector-badge">
+          {{ detail.sector }}
+        </mat-chip>
+        <mat-chip *ngIf="detail.industry" class="badge industry-badge">
+          {{ detail.industry }}
+        </mat-chip>
+        <mat-chip *ngIf="detail.exchange" class="badge exchange-badge">
+          {{ detail.exchange }}
+        </mat-chip>
+        <mat-chip *ngIf="!detail.active" class="badge inactive-badge" color="warn">
+          Inactive
+        </mat-chip>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <mat-tab-group class="symbol-tabs" animationDuration="200ms">
+      <mat-tab label="Overview">
+        <ng-template matTabContent>
+          <app-overview-tab [symbol]="symbol" [detail]="detail"></app-overview-tab>
+        </ng-template>
+      </mat-tab>
+      <mat-tab label="Fundamentals">
+        <ng-template matTabContent>
+          <app-fundamentals-tab [metrics]="detail.metrics"></app-fundamentals-tab>
+        </ng-template>
+      </mat-tab>
+      <mat-tab label="Sentiment">
+        <ng-template matTabContent>
+          <app-sentiment-tab [symbol]="symbol"></app-sentiment-tab>
+        </ng-template>
+      </mat-tab>
+      <mat-tab label="Activity">
+        <ng-template matTabContent>
+          <app-activity-tab [symbol]="symbol"></app-activity-tab>
+        </ng-template>
+      </mat-tab>
+    </mat-tab-group>
+  </ng-container>
+</div>

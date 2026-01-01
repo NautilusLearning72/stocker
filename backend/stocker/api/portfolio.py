@@ -1,7 +1,7 @@
 """
 Portfolio API Router.
 """
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from decimal import Decimal
 from stocker.core.database import get_db
 from stocker.models.portfolio_state import PortfolioState
 from stocker.models.holding import Holding
+from stocker.models.position_snapshot import PositionSnapshot
 
 router = APIRouter()
 
@@ -40,6 +41,31 @@ class HoldingSchema(BaseModel):
     qty: Decimal
     cost_basis: Decimal
     market_value: Decimal
+
+    class Config:
+        from_attributes = True
+
+
+class PositionSnapshotSchema(BaseModel):
+    portfolio_id: str
+    date: date
+    symbol: str
+    side: Optional[str]
+    qty: Decimal
+    avg_entry_price: Optional[Decimal]
+    cost_basis: Optional[Decimal]
+    market_value: Optional[Decimal]
+    current_price: Optional[Decimal]
+    lastday_price: Optional[Decimal]
+    change_today: Optional[Decimal]
+    unrealized_pl: Optional[Decimal]
+    unrealized_plpc: Optional[Decimal]
+    unrealized_intraday_pl: Optional[Decimal]
+    unrealized_intraday_plpc: Optional[Decimal]
+    asset_class: Optional[str]
+    exchange: Optional[str]
+    source: Optional[str]
+    as_of_ts: Optional[datetime]
 
     class Config:
         from_attributes = True
@@ -89,3 +115,29 @@ async def get_holdings(
     result = await db.execute(query)
     holdings = result.scalars().all()
     return holdings
+
+
+@router.get("/positions", response_model=list[PositionSnapshotSchema])
+async def get_positions(
+    portfolio_id: str = "main",
+    as_of: Optional[date] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get the latest position snapshots for a portfolio."""
+    if as_of is None:
+        date_query = select(PositionSnapshot.date).where(
+            PositionSnapshot.portfolio_id == portfolio_id
+        ).order_by(desc(PositionSnapshot.date)).limit(1)
+        result = await db.execute(date_query)
+        latest_date = result.scalar_one_or_none()
+        if not latest_date:
+            return []
+        as_of = latest_date
+
+    query = select(PositionSnapshot).where(
+        PositionSnapshot.portfolio_id == portfolio_id,
+        PositionSnapshot.date == as_of
+    ).order_by(PositionSnapshot.symbol.asc())
+    result = await db.execute(query)
+    positions = result.scalars().all()
+    return positions

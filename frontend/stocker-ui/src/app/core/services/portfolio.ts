@@ -24,6 +24,28 @@ export interface Holding {
   market_value: number;
 }
 
+export interface PositionSnapshot {
+  portfolio_id: string;
+  date: string;
+  symbol: string;
+  side?: string | null;
+  qty: number;
+  avg_entry_price?: number | null;
+  cost_basis?: number | null;
+  market_value?: number | null;
+  current_price?: number | null;
+  lastday_price?: number | null;
+  change_today?: number | null;
+  unrealized_pl?: number | null;
+  unrealized_plpc?: number | null;
+  unrealized_intraday_pl?: number | null;
+  unrealized_intraday_plpc?: number | null;
+  asset_class?: string | null;
+  exchange?: string | null;
+  source?: string | null;
+  as_of_ts?: string | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -40,6 +62,12 @@ export class PortfolioService {
 
   getHoldings(portfolioId = 'main'): Observable<Holding[]> {
     return this.http.get<Holding[]>(`${this.baseUrl}/holdings`, {
+      params: { portfolio_id: portfolioId }
+    });
+  }
+
+  getPositions(portfolioId = 'main'): Observable<PositionSnapshot[]> {
+    return this.http.get<PositionSnapshot[]>(`${this.baseUrl}/positions`, {
       params: { portfolio_id: portfolioId }
     });
   }

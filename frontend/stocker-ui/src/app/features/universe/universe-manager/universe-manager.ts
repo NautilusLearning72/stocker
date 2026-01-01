@@ -20,6 +20,7 @@ import {
 } from '../../../core/services/universe.service';
 import { InstrumentInfo, InstrumentInfoService } from '../../../core/services/instrument-info.service';
 import { UniverseNamePipe } from './universe-name.pipe';
+import { SymbolLink } from '../../../shared/components/symbol-link/symbol-link';
 
 @Component({
   selector: 'app-universe-manager',
@@ -37,6 +38,7 @@ import { UniverseNamePipe } from './universe-name.pipe';
     MatTableModule,
     MatTabsModule,
     UniverseNamePipe,
+    SymbolLink,
   ],
   templateUrl: './universe-manager.html',
   styleUrl: './universe-manager.scss',

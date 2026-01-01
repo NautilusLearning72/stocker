@@ -3,10 +3,11 @@ import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { CommonModule } from '@angular/common';
 import { Order } from '../../../core/services/orders';
+import { SymbolLink } from '../../../shared/components/symbol-link/symbol-link';
 
 @Component({
   selector: 'app-orders-table',
-  imports: [MatTableModule, MatChipsModule, CommonModule],
+  imports: [MatTableModule, MatChipsModule, CommonModule, SymbolLink],
   templateUrl: './orders-table.html',
   styleUrl: './orders-table.scss',
 })

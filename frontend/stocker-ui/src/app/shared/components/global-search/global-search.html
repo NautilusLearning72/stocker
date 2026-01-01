@@ -1,0 +1,44 @@
+<div class="global-search">
+  <div class="search-input-container">
+    <mat-icon class="search-icon">search</mat-icon>
+    <input
+      type="text"
+      class="search-input"
+      placeholder="Search symbols..."
+      [(ngModel)]="searchTerm"
+      (input)="onInput()"
+      (focus)="onFocus()"
+      (keydown)="onKeydown($event)"
+    />
+    <mat-icon
+      *ngIf="searchTerm"
+      class="clear-icon"
+      (click)="clearSearch()"
+    >
+      close
+    </mat-icon>
+  </div>
+
+  <div class="search-dropdown" *ngIf="showDropdown">
+    <div
+      *ngFor="let result of results; let i = index"
+      class="search-result"
+      [class.selected]="i === selectedIndex"
+      (click)="selectResult(result)"
+      (mouseenter)="selectedIndex = i"
+    >
+      <span class="result-symbol">{{ result.symbol }}</span>
+      <span class="result-name" *ngIf="result.name">{{ result.name }}</span>
+      <span class="result-meta">
+        <span class="result-sector" *ngIf="result.sector">{{ result.sector }}</span>
+        <span class="result-exchange" *ngIf="result.exchange">{{ result.exchange }}</span>
+      </span>
+    </div>
+    <div *ngIf="isLoading" class="search-loading">
+      Searching...
+    </div>
+    <div *ngIf="!isLoading && results.length === 0 && searchTerm" class="search-empty">
+      No results found
+    </div>
+  </div>
+</div>

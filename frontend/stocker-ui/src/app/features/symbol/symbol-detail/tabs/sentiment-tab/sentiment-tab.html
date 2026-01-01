@@ -1,0 +1,126 @@
+<div class="sentiment-tab">
+  <!-- Loading -->
+  <div class="loading-container" *ngIf="loading">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Loading sentiment data...</p>
+  </div>
+
+  <ng-container *ngIf="!loading">
+    <!-- Controls -->
+    <div class="controls">
+      <mat-button-toggle-group
+        [(ngModel)]="selectedDays"
+        (change)="onDaysChange()"
+        class="time-toggle"
+      >
+        <mat-button-toggle *ngFor="let opt of dayOptions" [value]="opt.value">
+          {{ opt.label }}
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+
+    <!-- No Data -->
+    <div class="no-data" *ngIf="sentimentData.length === 0">
+      <mat-icon>sentiment_neutral</mat-icon>
+      <p>No sentiment data available for this symbol.</p>
+    </div>
+
+    <!-- Content -->
+    <ng-container *ngIf="sentimentData.length > 0">
+      <!-- Summary Cards -->
+      <div class="stats-grid">
+        <!-- Current Sentiment -->
+        <mat-card class="stat-card sentiment-card" *ngIf="latestSentiment">
+          <mat-card-content>
+            <div class="sentiment-icon" [ngClass]="getSentimentClass(latestSentiment.sentiment_score)">
+              <mat-icon>{{ getSentimentIcon(latestSentiment.sentiment_score) }}</mat-icon>
+            </div>
+            <div class="sentiment-info">
+              <div class="stat-label">Current Sentiment</div>
+              <div class="stat-value" [ngClass]="getSentimentClass(latestSentiment.sentiment_score)">
+                {{ getSentimentLabel(latestSentiment.sentiment_score) }}
+              </div>
+              <div class="score">Score: {{ latestSentiment.sentiment_score | number:'1.2-2' }}</div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Average Sentiment -->
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <app-metric-tooltip metric="sentiment_score"></app-metric-tooltip>
+            <div class="stat-value" [ngClass]="getSentimentClass(averageSentiment || 0)">
+              {{ averageSentiment !== null ? (averageSentiment | number:'1.2-2') : '-' }}
+            </div>
+            <div class="stat-sublabel">{{ selectedDays }}-day average</div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Total Articles -->
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <app-metric-tooltip metric="article_count"></app-metric-tooltip>
+            <div class="stat-value">{{ totalArticles }}</div>
+            <div class="stat-sublabel">articles analyzed</div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- What is Sentiment Explainer -->
+      <mat-card class="explainer-card">
+        <mat-card-content>
+          <h4>
+            <mat-icon>lightbulb</mat-icon>
+            What is Sentiment Analysis?
+          </h4>
+          <p>
+            Sentiment analysis measures the overall mood of news articles and social media
+            posts about this stock. Scores range from -1 (very negative) to +1 (very positive).
+          </p>
+          <p>
+            <strong>Important:</strong> Sentiment is just one data point. Positive sentiment
+            doesn't guarantee price increases, and negative sentiment doesn't mean the stock
+            will fall. Always consider multiple factors when making investment decisions.
+          </p>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Sentiment History -->
+      <mat-card class="history-card">
+        <mat-card-content>
+          <h3>Sentiment History</h3>
+          <div class="history-table-container">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Sentiment</th>
+                  <th>Score</th>
+                  <th>Articles</th>
+                  <th>Breakdown</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of sentimentData.slice().reverse()">
+                  <td>{{ item.date }}</td>
+                  <td>
+                    <span class="sentiment-badge" [ngClass]="getSentimentClass(item.sentiment_score)">
+                      {{ getSentimentLabel(item.sentiment_score) }}
+                    </span>
+                  </td>
+                  <td class="score-cell">{{ item.sentiment_score | number:'1.2-2' }}</td>
+                  <td>{{ item.article_count || '-' }}</td>
+                  <td class="breakdown-cell">
+                    <span class="positive">+{{ item.positive_count || 0 }}</span>
+                    <span class="neutral">~{{ item.neutral_count || 0 }}</span>
+                    <span class="negative">-{{ item.negative_count || 0 }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </ng-container>
+  </ng-container>
+</div>

@@ -2,9 +2,17 @@
     <h2>Portfolio Overview</h2>
     <app-portfolio-summary [metrics]="metrics"></app-portfolio-summary>
 
-    <h2 class="mt-4">Current Holdings</h2>
-    <app-holdings-table [holdings]="holdings" [instrumentNames]="instrumentNames"></app-holdings-table>
-
-    <h2 class="mt-4">Recent Orders</h2>
-    <app-orders-table [orders]="orders" [instrumentNames]="instrumentNames"></app-orders-table>
+    <h2 class="mt-4">Portfolio Activity</h2>
+    <mat-tab-group>
+        <mat-tab label="Holdings">
+            <div class="tab-pane">
+                <app-holdings-table [holdings]="holdings" [instrumentNames]="instrumentNames"></app-holdings-table>
+            </div>
+        </mat-tab>
+        <mat-tab label="Recent Orders">
+            <div class="tab-pane">
+                <app-orders-table [orders]="orders" [instrumentNames]="instrumentNames"></app-orders-table>
+            </div>
+        </mat-tab>
+    </mat-tab-group>
 </div>

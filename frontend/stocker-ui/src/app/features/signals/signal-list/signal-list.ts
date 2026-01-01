@@ -5,10 +5,11 @@ import { InstrumentInfoService, InstrumentInfo } from '../../../core/services/in
 import { SignalService, Signal } from '../../../core/services/signal.service';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
+import { SymbolLink } from '../../../shared/components/symbol-link/symbol-link';
 
 @Component({
   selector: 'app-signal-list',
-  imports: [CommonModule, MatTableModule, MatChipsModule, MatIconModule],
+  imports: [CommonModule, MatTableModule, MatChipsModule, MatIconModule, SymbolLink],
   templateUrl: './signal-list.html',
   styleUrl: './signal-list.scss',
 })

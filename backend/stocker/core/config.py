@@ -108,6 +108,15 @@ class Settings(BaseSettings):
     FUNDAMENTALS_MAX_RETRIES: int = 3
     FUNDAMENTALS_RETRY_BACKOFF_SEC: float = 1.0
 
+    # Corporate Actions Provider
+    CORP_ACTIONS_PROVIDER: str = "yfinance"
+    CORP_ACTIONS_LOOKBACK_DAYS: int = 90
+    CORP_ACTIONS_REFRESH_DAY: int = 0  # Monday
+    CORP_ACTIONS_REFRESH_HOUR: int = 21
+    CORP_ACTIONS_REFRESH_MINUTE: int = 0
+    CORP_ACTIONS_MAX_RETRIES: int = 3
+    CORP_ACTIONS_RETRY_BACKOFF_SEC: float = 1.0
+
     # Sentiment Data Provider
     SENTIMENT_PROVIDER: str = "gdelt"
     SENTIMENT_PERIOD: Literal["DAILY", "WEEKLY"] = "WEEKLY"
@@ -139,6 +148,12 @@ class Settings(BaseSettings):
     SLACK_WEBHOOK_URL: str = ""
     PAGERDUTY_API_KEY: str = ""
     ALERT_EMAIL: str = ""
+    HEALTH_CONSUMER_WARN_SEC: int = 300
+    HEALTH_CONSUMER_ERROR_SEC: int = 900
+
+    # Portfolio Sync (Alpaca)
+    PORTFOLIO_SYNC_LOOKBACK_DAYS: int = 30
+    PORTFOLIO_SYNC_ORDER_LIMIT: int = 500
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:4200", "http://localhost:8000"]

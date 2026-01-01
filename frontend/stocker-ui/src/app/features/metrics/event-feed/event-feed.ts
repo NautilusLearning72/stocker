@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { MetricEvent, MetricsService, MetricsCategories } from '../../../core/services/metrics.service';
+import { SymbolLink } from '../../../shared/components/symbol-link/symbol-link';
 
 @Component({
   selector: 'app-event-feed',
@@ -26,6 +27,7 @@ import { MetricEvent, MetricsService, MetricsCategories } from '../../../core/se
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    SymbolLink,
   ],
   templateUrl: './event-feed.html',
   styleUrl: './event-feed.scss',

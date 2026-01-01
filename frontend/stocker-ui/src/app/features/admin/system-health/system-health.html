@@ -1,6 +1,21 @@
 <div class="health-container">
     <h2>System Status</h2>
 
+    <div class="sync-panel">
+        <div class="sync-text">
+            <h3>Portfolio Sync</h3>
+            <p>Refresh holdings, orders, fills, and portfolio state from Alpaca.</p>
+        </div>
+        <button mat-raised-button color="primary" (click)="syncPortfolio()" [disabled]="syncing">
+            {{ syncing ? 'Syncing...' : 'Sync Now' }}
+        </button>
+    </div>
+    <p class="status-message" *ngIf="syncMessage">{{ syncMessage }}</p>
+    <p class="status-message error" *ngIf="syncError">{{ syncError }}</p>
+
+    <p class="status-message" *ngIf="loading">Checking system health...</p>
+    <p class="status-message error" *ngIf="errorMsg">{{ errorMsg }}</p>
+
     <div class="grid">
         <mat-card *ngFor="let service of services" class="status-card" [class]="service.status">
             <mat-card-header>
@@ -9,7 +24,7 @@
                 <mat-icon mat-card-avatar *ngIf="service.status === 'warning'" class="icon-warning">warning</mat-icon>
                 <mat-icon mat-card-avatar *ngIf="service.status === 'error'" class="icon-error">error</mat-icon>
                 <mat-card-title>{{ service.name }}</mat-card-title>
-                <mat-card-subtitle>{{ service.lastHeartbeat }}</mat-card-subtitle>
+                <mat-card-subtitle>{{ service.last_heartbeat }}</mat-card-subtitle>
             </mat-card-header>
             <mat-card-content *ngIf="service.message">
                 <p>{{ service.message }}</p>

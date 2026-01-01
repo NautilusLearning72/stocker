@@ -1,0 +1,143 @@
+<div class="overview-tab">
+  <!-- Price Chart Section -->
+  <mat-card class="chart-card">
+    <mat-card-content>
+      <div class="chart-header">
+        <div class="chart-controls">
+          <mat-button-toggle-group
+            [(ngModel)]="selectedDays"
+            (change)="onDaysChange()"
+            class="time-toggle"
+          >
+            <mat-button-toggle
+              *ngFor="let opt of dayOptions"
+              [value]="opt.value"
+            >
+              {{ opt.label }}
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+          <mat-button-toggle-group
+            [(ngModel)]="chartType"
+            class="chart-type-toggle"
+          >
+            <mat-button-toggle value="candlestick">Candles</mat-button-toggle>
+            <mat-button-toggle value="line">Line</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+      </div>
+
+      <div class="chart-container" *ngIf="!loadingPrices">
+        <app-price-chart
+          [prices]="prices"
+          [chartType]="chartType"
+          [height]="350"
+        ></app-price-chart>
+      </div>
+      <div class="chart-loading" *ngIf="loadingPrices">
+        <mat-spinner diameter="32"></mat-spinner>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Quick Stats -->
+  <div class="stats-grid">
+    <!-- Price Card -->
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-label">Current Price</div>
+        <div class="stat-value price-value">
+          {{ latestPrice !== null ? '$' + (latestPrice | number:'1.2-2') : '-' }}
+        </div>
+        <div
+          class="stat-change"
+          *ngIf="priceChange !== null"
+          [class.positive]="priceChange >= 0"
+          [class.negative]="priceChange < 0"
+        >
+          <mat-icon>{{ priceChange >= 0 ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+          {{ priceChange >= 0 ? '+' : '' }}{{ priceChange | number:'1.2-2' }}
+          ({{ priceChangePercent | number:'1.2-2' }}%)
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Volume Card -->
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-label">Volume</div>
+        <div class="stat-value">
+          {{ formatLargeNumber(latestVolume) }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Market Cap Card -->
+    <mat-card class="stat-card" *ngIf="detail.metrics">
+      <mat-card-content>
+        <app-metric-tooltip metric="market_cap"></app-metric-tooltip>
+        <div class="stat-value">
+          {{ formatLargeNumber(detail.metrics.market_cap) }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- P/E Card -->
+    <mat-card class="stat-card" *ngIf="detail.metrics">
+      <mat-card-content>
+        <app-metric-tooltip metric="pe_ttm"></app-metric-tooltip>
+        <div class="stat-value">
+          {{ detail.metrics.pe_ttm !== null ? (detail.metrics.pe_ttm | number:'1.2-2') : '-' }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Dividend Yield Card -->
+    <mat-card class="stat-card" *ngIf="detail.metrics">
+      <mat-card-content>
+        <app-metric-tooltip metric="dividend_yield"></app-metric-tooltip>
+        <div class="stat-value">
+          {{ formatPercent(detail.metrics.dividend_yield) }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Beta Card -->
+    <mat-card class="stat-card" *ngIf="detail.metrics">
+      <mat-card-content>
+        <app-metric-tooltip metric="beta"></app-metric-tooltip>
+        <div class="stat-value">
+          {{ detail.metrics.beta !== null ? (detail.metrics.beta | number:'1.2-2') : '-' }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Company Info Section -->
+  <mat-card class="info-card">
+    <mat-card-content>
+      <h3>Company Information</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Sector</span>
+          <span class="info-value">{{ detail.sector || '-' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Industry</span>
+          <span class="info-value">{{ detail.industry || '-' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Exchange</span>
+          <span class="info-value">{{ detail.exchange || '-' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Currency</span>
+          <span class="info-value">{{ detail.currency || 'USD' }}</span>
+        </div>
+        <div class="info-item" *ngIf="detail.metrics">
+          <span class="info-label">Data As Of</span>
+          <span class="info-value">{{ detail.metrics.as_of_date }}</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

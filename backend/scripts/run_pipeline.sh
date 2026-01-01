@@ -62,6 +62,14 @@ result = ingest_market_sentiment()
 print(f'✓ Market sentiment ingestion completed: {result}')
 "
 
+# Fetch corporate actions for global universe
+echo -e "\n${YELLOW}🏦 Ingesting corporate actions for global universe...${NC}"
+poetry run python -c "
+from stocker.tasks.corporate_actions import ingest_corporate_actions
+result = ingest_corporate_actions()
+print(f'✓ Corporate actions ingestion completed: {result}')
+"
+
 # Initialize portfolio if not exists
 echo -e "\n${YELLOW}💰 Initializing portfolio...${NC}"
 poetry run python -c "
