@@ -5,10 +5,27 @@ import logging
 import os
 import json
 from datetime import datetime
+from urllib.parse import urlsplit, urlunsplit
 from redis.asyncio import Redis
 from stocker.core.config import settings
+from stocker.core.metrics import metrics
 
 logger = logging.getLogger(__name__)
+
+def _redact_db_url(url: str) -> str:
+    try:
+        parts = urlsplit(url)
+        username = parts.username or ""
+        password = parts.password
+        hostname = parts.hostname or ""
+        port = f":{parts.port}" if parts.port else ""
+        auth = ""
+        if username:
+            auth = f"{username}:{'***' if password else ''}@"
+        netloc = f"{auth}{hostname}{port}"
+        return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+    except Exception:
+        return url
 
 class BaseStreamConsumer(ABC):
     """Base class for Redis Stream consumers."""
@@ -34,6 +51,10 @@ class BaseStreamConsumer(ABC):
     async def start(self) -> None:
         """Start consuming from the stream."""
         self.redis = Redis.from_url(self.redis_url, decode_responses=True)
+        logger.info("Using database %s", _redact_db_url(settings.DATABASE_URL))
+        
+        # Connect metrics emitter to Redis for cross-process visibility
+        metrics.set_redis(self.redis)
         
         # Create consumer group if not exists
         try:

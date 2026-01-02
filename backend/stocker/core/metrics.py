@@ -19,6 +19,8 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
+from stocker.core.redis import StreamNames
+
 logger = logging.getLogger(__name__)
 
 
@@ -137,14 +139,30 @@ class MetricsEmitter:
         # Publish to Redis stream if available
         if self.redis:
             try:
-                # Use sync xadd for simplicity; async version available if needed
-                self.redis.xadd("metrics", {
-                    "data": json.dumps(event.to_dict())
-                })
+                import asyncio
+                # Check if we're in an async context and handle appropriately
+                try:
+                    loop = asyncio.get_running_loop()
+                    # We're in async context - schedule the async xadd
+                    asyncio.create_task(self._async_publish(event))
+                except RuntimeError:
+                    # No running loop - use sync (won't work with async Redis)
+                    # This path is for non-async code (rare)
+                    pass
             except Exception as e:
                 logger.warning(f"Failed to publish metric to Redis: {e}")
 
         return event
+
+    async def _async_publish(self, event: MetricEvent) -> None:
+        """Async helper to publish metric to Redis."""
+        if self.redis:
+            try:
+                await self.redis.xadd(StreamNames.METRICS, {
+                    "data": json.dumps(event.to_dict())
+                })
+            except Exception as e:
+                logger.warning(f"Failed to publish metric to Redis: {e}")
 
     async def emit_async(
         self,
@@ -184,7 +202,7 @@ class MetricsEmitter:
         # Async Redis publish
         if self.redis:
             try:
-                await self.redis.xadd("metrics", {
+                await self.redis.xadd(StreamNames.METRICS, {
                     "data": json.dumps(event.to_dict())
                 })
             except Exception as e:

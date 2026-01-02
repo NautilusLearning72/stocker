@@ -2,20 +2,25 @@ import asyncio
 import logging
 import uuid
 from typing import Dict, Any
-from datetime import datetime, date
+from datetime import datetime, timezone
 
 from stocker.stream_consumers.base import BaseStreamConsumer
 from stocker.core.config import settings
 from stocker.core.database import AsyncSessionLocal
 from stocker.core.redis import StreamNames
+from stocker.core.metrics import metrics
 from stocker.models.order import Order
 from stocker.models.fill import Fill
 from sqlalchemy.future import select
+from sqlalchemy.dialects.postgresql import insert
 
 # We might need Alpaca Client here if execution is real
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockLatestTradeRequest
+from alpaca.common.exceptions import APIError
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +45,85 @@ class BrokerConsumer(BaseStreamConsumer):
             secret_key=settings.ALPACA_SECRET_KEY,
             paper=(settings.BROKER_MODE == "paper")
         )
+        # Initialize Alpaca Data Client for market data (latest trades, etc.)
+        self.data_client = StockHistoricalDataClient(
+            api_key=settings.ALPACA_API_KEY,
+            secret_key=settings.ALPACA_SECRET_KEY
+        )
+        self.fractional_enabled = settings.FRACTIONAL_SIZING_ENABLED
+
+    def _get_alpaca_position(self, symbol: str) -> float:
+        """
+        Get actual position quantity from Alpaca.
+        
+        Returns 0.0 if no position exists.
+        """
+        try:
+            position = self.trading_client.get_open_position(symbol)
+            return float(position.qty)
+        except APIError as e:
+            # Position not found means we don't hold any
+            if "position does not exist" in str(e).lower():
+                return 0.0
+            raise
+        except Exception:
+            return 0.0
+
+    def _validate_sell_order(self, symbol: str, qty: float) -> tuple[bool, float, str]:
+        """
+        Validate sell order against actual Alpaca position.
+        
+        For fractional orders, Alpaca doesn't allow short selling.
+        This checks the actual broker position and adjusts quantity if needed.
+        
+        Returns:
+            (is_valid, adjusted_qty, reason)
+        """
+        actual_position = self._get_alpaca_position(symbol)
+        
+        if actual_position <= 0:
+            return False, 0.0, f"No position to sell (Alpaca position: {actual_position})"
+        
+        if qty > actual_position:
+            # Cap to actual position to avoid short selling
+            if self.fractional_enabled:
+                # Fractional orders cannot short sell at all
+                logger.warning(
+                    f"Capping {symbol} sell from {qty:.4f} to {actual_position:.4f} "
+                    f"(fractional short selling not allowed)"
+                )
+                return True, actual_position, "capped_to_position"
+            else:
+                # Integer orders: round down to available
+                capped_qty = float(int(actual_position))
+                if capped_qty <= 0:
+                    return False, 0.0, f"Position too small for integer sell ({actual_position})"
+                logger.warning(
+                    f"Capping {symbol} sell from {qty:.0f} to {capped_qty:.0f}"
+                )
+                return True, capped_qty, "capped_to_position"
+        
+        return True, qty, "ok"
+
+    def _is_market_open(self) -> tuple[bool, str]:
+        """
+        Check if the market is currently open for trading.
+        
+        Returns:
+            (is_open, status_message)
+        """
+        try:
+            clock = self.trading_client.get_clock()
+            if clock.is_open:
+                return True, "Market is open"
+            else:
+                next_open = clock.next_open.strftime("%Y-%m-%d %H:%M:%S %Z")
+                next_close = clock.next_close.strftime("%Y-%m-%d %H:%M:%S %Z")
+                return False, f"Market closed. Next open: {next_open}, Next close: {next_close}"
+        except Exception as e:
+            logger.warning(f"Failed to check market hours: {e}")
+            # Default to allowing order attempt if we can't check
+            return True, "Unable to verify market hours"
 
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
         order_internal_id = data.get("order_id")
@@ -51,10 +135,16 @@ class BrokerConsumer(BaseStreamConsumer):
             return
             
         qty = float(qty_str)
+
+        try:
+            order_uuid = uuid.UUID(order_internal_id)
+        except ValueError:
+            logger.error(f"Invalid order id: {order_internal_id}")
+            return
         
         # 1. Update Order Status to PENDING
         async with AsyncSessionLocal() as session:
-            stmt = select(Order).where(Order.order_id == order_internal_id)
+            stmt = select(Order).where(Order.order_id == order_uuid)
             result = await session.execute(stmt)
             order_record = result.scalar_one_or_none()
             
@@ -68,8 +158,80 @@ class BrokerConsumer(BaseStreamConsumer):
                 
             order_record.status = "PENDING_EXECUTION"
             await session.commit()
+
+        # 2. For SELL orders, validate against actual Alpaca position
+        #    Alpaca doesn't allow short selling with fractional shares
+        if side == "SELL":
+            is_valid, adjusted_qty, reason = self._validate_sell_order(symbol, qty)
             
-        # 2. Execute with Broker
+            if not is_valid:
+                logger.warning(
+                    f"Sell order for {symbol} rejected: {reason}"
+                )
+                # Emit rejection metric
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "rejected",
+                    qty,
+                    symbol=symbol,
+                    metadata={"reason": reason, "side": side}
+                )
+                async with AsyncSessionLocal() as session:
+                    stmt = select(Order).where(Order.order_id == order_uuid)
+                    res = await session.execute(stmt)
+                    o = res.scalar_one_or_none()
+                    if o:
+                        o.status = "REJECTED"
+                        await session.commit()
+                return
+            
+            if adjusted_qty != qty:
+                logger.info(f"Adjusted {symbol} sell qty from {qty:.4f} to {adjusted_qty:.4f}")
+                # Emit adjustment metric
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "qty_adjusted",
+                    adjusted_qty,
+                    symbol=symbol,
+                    metadata={
+                        "original_qty": qty,
+                        "adjusted_qty": adjusted_qty,
+                        "reason": reason
+                    }
+                )
+                # Persist the adjusted qty to the Order
+                async with AsyncSessionLocal() as session:
+                    stmt = select(Order).where(Order.order_id == order_uuid)
+                    res = await session.execute(stmt)
+                    o = res.scalar_one_or_none()
+                    if o:
+                        o.qty = adjusted_qty
+                        await session.commit()
+                        logger.debug(f"Updated Order {order_internal_id} qty to {adjusted_qty}")
+                qty = adjusted_qty
+
+        # 3. Check if market is open
+        market_open, market_status = self._is_market_open()
+        if not market_open:
+            logger.warning(f"Skipping order {order_internal_id} for {symbol}: {market_status}")
+            # Emit market closed metric
+            metrics.emit(
+                metrics.CATEGORY_ORDER,
+                "market_closed",
+                qty,
+                symbol=symbol,
+                metadata={"status": market_status, "side": side}
+            )
+            async with AsyncSessionLocal() as session:
+                stmt = select(Order).where(Order.order_id == order_uuid)
+                res = await session.execute(stmt)
+                o = res.scalar_one_or_none()
+                if o:
+                    o.status = "PENDING"  # Keep as pending to retry when market opens
+                    await session.commit()
+            return
+            
+        # 4. Execute with Broker
         broker_order_id = None
         execution_price = 0.0
         filled_qty = 0
@@ -87,17 +249,36 @@ class BrokerConsumer(BaseStreamConsumer):
             broker_order_id = str(submitted_order.id)
             logger.info(f"Submitted order {order_internal_id} to Alpaca: {broker_order_id}")
 
-            # 3. Poll for actual fill from Alpaca
+            # Immediately persist broker_order_id to Order
+            async with AsyncSessionLocal() as session:
+                stmt = select(Order).where(Order.order_id == order_uuid)
+                res = await session.execute(stmt)
+                o = res.scalar_one_or_none()
+                if o:
+                    o.broker_order_id = broker_order_id
+                    o.status = "SUBMITTED"
+                    await session.commit()
+                    logger.debug(f"Order {order_internal_id} submitted to broker: {broker_order_id}")
+
+            # 5. Poll for actual fill from Alpaca
             # Market orders typically fill immediately, but we should verify
             execution_price, filled_qty = await self._wait_for_fill(
                 broker_order_id, symbol, qty
             )
             
         except Exception as e:
-            logger.error(f"Broker execution failed: {e}")
+            logger.error(f"Broker execution failed for {symbol}: {e}")
+            # Emit failure metric
+            metrics.emit(
+                metrics.CATEGORY_ORDER,
+                "execution_failed",
+                qty,
+                symbol=symbol,
+                metadata={"error": str(e), "side": side}
+            )
             # Mark order failed
             async with AsyncSessionLocal() as session:
-                stmt = select(Order).where(Order.order_id == order_internal_id)
+                stmt = select(Order).where(Order.order_id == order_uuid)
                 res = await session.execute(stmt)
                 o = res.scalar_one_or_none()
                 if o:
@@ -105,34 +286,57 @@ class BrokerConsumer(BaseStreamConsumer):
                     await session.commit()
             return
 
-        # 4. Generate Fill Record (Optimistic)
-        fill_id = str(uuid.uuid4())
+        # 6. Generate Fill Record (idempotent insert)
+        fill_id = f"alpaca:{broker_order_id}" if broker_order_id else f"local:{order_internal_id}"
+        fill_timestamp = datetime.now(timezone.utc)
         
         async with AsyncSessionLocal() as session:
-            # Update Order
-            stmt = select(Order).where(Order.order_id == order_internal_id)
+            # Update Order to FILLED
+            stmt = select(Order).where(Order.order_id == order_uuid)
             res = await session.execute(stmt)
             o = res.scalar_one_or_none()
             if o:
                 o.status = "FILLED"
                 o.broker_order_id = broker_order_id
+                logger.info(f"Order {order_internal_id} marked FILLED in database")
+            else:
+                logger.error(f"Order {order_internal_id} not found when trying to mark FILLED")
             
-            # Create Fill
-            new_fill = Fill(
+            # Insert fill once; safe to retry without duplicates.
+            fill_stmt = insert(Fill).values(
                 fill_id=fill_id,
-                order_id=order_internal_id,
-                date=date.today(),
+                order_id=order_uuid,
+                date=fill_timestamp,
                 symbol=symbol,
                 side=side,
                 qty=filled_qty,
                 price=execution_price,
-                commission=0.0, # Alpaca free
+                commission=0.0,
                 exchange="ALPACA"
-            )
-            session.add(new_fill)
+            ).on_conflict_do_nothing(index_elements=["fill_id"])
+            result = await session.execute(fill_stmt)
             await session.commit()
+            if result.rowcount == 1:
+                logger.info(f"Fill {fill_id} persisted: {side} {filled_qty} {symbol} @ {execution_price}")
+            else:
+                logger.info(f"Fill {fill_id} already exists, skipping insert")
+
+        # Emit fill metric for dashboard visibility
+        notional = filled_qty * execution_price
+        metrics.emit(
+            metrics.CATEGORY_ORDER,
+            "filled",
+            notional,
+            symbol=symbol,
+            metadata={
+                "side": side,
+                "qty": filled_qty,
+                "price": execution_price,
+                "broker_order_id": broker_order_id
+            }
+        )
             
-        # 5. Publish 'fill_created'
+        # 7. Publish 'fill_created'
         await self.redis.xadd(StreamNames.FILLS, {
             "event_type": "fill_created",
             "fill_id": fill_id,
@@ -211,7 +415,9 @@ class BrokerConsumer(BaseStreamConsumer):
             f"Order {broker_order_id} fill timeout after {max_wait_seconds}s, "
             f"using latest trade price as fallback"
         )
-        trade = self.trading_client.get_latest_trade(symbol)
+        request = StockLatestTradeRequest(symbol_or_symbols=symbol)
+        trades = self.data_client.get_stock_latest_trade(request)
+        trade = trades[symbol]
         return float(trade.price), expected_qty
 
 

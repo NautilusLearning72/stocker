@@ -2,9 +2,11 @@
 Metrics API endpoint for observability dashboard.
 
 Provides:
-- Summary statistics for metrics
+- Summary statistics for metrics (from Redis stream)
 - Real-time metrics stream via SSE
 - Historical metrics query
+
+Metrics are stored in Redis stream by consumers and read by the API.
 """
 import json
 import asyncio
@@ -45,17 +47,110 @@ class MetricEventResponse(BaseModel):
     metadata: dict
 
 
+async def _get_events_from_redis(
+    hours: int = 24,
+    category: Optional[str] = None,
+    event_type: Optional[str] = None,
+    symbol: Optional[str] = None,
+    limit: int = 1000
+) -> List[dict]:
+    """
+    Fetch metric events from Redis stream.
+    
+    This is the source of truth for metrics across all processes.
+    """
+    redis = await get_async_redis()
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    
+    # Calculate Redis stream ID for cutoff time (milliseconds since epoch)
+    cutoff_ms = int(cutoff.timestamp() * 1000)
+    start_id = f"{cutoff_ms}-0"
+    
+    events = []
+    try:
+        # Read from metrics stream - XRANGE for historical data
+        result = await redis.xrange(
+            StreamNames.METRICS,
+            min=start_id,
+            max="+",
+            count=limit * 2  # Fetch more to account for filtering
+        )
+        
+        for message_id, data in result:
+            try:
+                event_data = json.loads(data.get("data", "{}"))
+                
+                # Apply filters
+                if category and event_data.get("category") != category:
+                    continue
+                if event_type and event_data.get("event_type") != event_type:
+                    continue
+                if symbol and event_data.get("symbol") != symbol:
+                    continue
+                
+                events.append(event_data)
+                
+                if len(events) >= limit:
+                    break
+                    
+            except json.JSONDecodeError:
+                continue
+                
+    except Exception as e:
+        # Log error but return empty list
+        import logging
+        logging.getLogger(__name__).error(f"Failed to read metrics from Redis: {e}")
+    
+    # Return most recent first
+    return list(reversed(events))
+
+
 @router.get("/summary", response_model=MetricsSummary)
 async def get_metrics_summary(
     hours: int = Query(default=24, ge=1, le=168, description="Hours of history to include")
 ) -> MetricsSummary:
     """
-    Get aggregated summary of recent metrics.
+    Get aggregated summary of recent metrics from Redis stream.
 
     Returns counts and rates for all metric categories.
     """
-    summary = metrics.get_summary(hours=hours)
-    return MetricsSummary(**summary)
+    events = await _get_events_from_redis(hours=hours, limit=5000)
+    
+    # Aggregate metrics
+    by_category: dict = {}
+    by_event: dict = {}
+    confirmation_passed = 0
+    confirmation_total = 0
+    
+    for event in events:
+        cat = event.get("category", "unknown")
+        evt = event.get("event_type", "unknown")
+        
+        by_category[cat] = by_category.get(cat, 0) + 1
+        key = f"{cat}/{evt}"
+        by_event[key] = by_event.get(key, 0) + 1
+        
+        # Track confirmation rate
+        if evt == "confirmation_check":
+            confirmation_total += 1
+            if event.get("value") == 1.0:
+                confirmation_passed += 1
+    
+    return MetricsSummary(
+        period_hours=hours,
+        total_events=len(events),
+        by_category=by_category,
+        by_event=by_event,
+        confirmation_rate=(
+            confirmation_passed / confirmation_total
+            if confirmation_total > 0 else None
+        ),
+        trailing_stops_triggered=by_event.get("exit/trailing_stop_triggered", 0),
+        sector_caps_applied=by_event.get("diversification/sector_cap_applied", 0),
+        correlation_throttles=by_event.get("diversification/correlation_throttle", 0),
+        orders_created=by_event.get("order/created", 0),
+        orders_skipped=by_event.get("order/skipped", 0),
+    )
 
 
 @router.get("/events", response_model=List[MetricEventResponse])
@@ -67,37 +162,28 @@ async def get_recent_events(
     hours: int = Query(default=24, ge=1, le=168, description="Hours of history")
 ) -> List[MetricEventResponse]:
     """
-    Get recent metric events with optional filtering.
+    Get recent metric events from Redis stream with optional filtering.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-    buffer = metrics.get_buffer()
-
-    # Filter events
-    events = []
-    for event in reversed(buffer):  # Most recent first
-        if event.timestamp < cutoff:
-            continue
-        if category and event.category != category:
-            continue
-        if event_type and event.event_type != event_type:
-            continue
-        if symbol and event.symbol != symbol:
-            continue
-
-        events.append(MetricEventResponse(
-            timestamp=event.timestamp.isoformat(),
-            category=event.category,
-            event_type=event.event_type,
-            symbol=event.symbol,
-            portfolio_id=event.portfolio_id,
-            value=event.value,
-            metadata=event.metadata
-        ))
-
-        if len(events) >= limit:
-            break
-
-    return events
+    events = await _get_events_from_redis(
+        hours=hours,
+        category=category,
+        event_type=event_type,
+        symbol=symbol,
+        limit=limit
+    )
+    
+    return [
+        MetricEventResponse(
+            timestamp=e.get("timestamp", ""),
+            category=e.get("category", ""),
+            event_type=e.get("event_type", ""),
+            symbol=e.get("symbol"),
+            portfolio_id=e.get("portfolio_id", "main"),
+            value=e.get("value", 0.0),
+            metadata=e.get("metadata", {})
+        )
+        for e in events
+    ]
 
 
 @router.get("/categories")

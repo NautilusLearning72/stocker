@@ -1,0 +1,153 @@
+<div class="performance-dashboard">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-title">
+      <mat-icon>analytics</mat-icon>
+      <h1>Performance</h1>
+    </div>
+
+    <div class="header-controls">
+      <!-- Granularity Toggle -->
+      <mat-button-toggle-group
+        [(ngModel)]="granularity"
+        (change)="onGranularityChange()"
+        aria-label="Time granularity">
+        <mat-button-toggle value="daily">Daily</mat-button-toggle>
+        <mat-button-toggle value="monthly">Monthly</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <!-- Date Range -->
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>Start Date</mat-label>
+        <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate" (dateChange)="onDateChange()">
+        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>End Date</mat-label>
+        <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate" (dateChange)="onDateChange()">
+        <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+
+      <button mat-icon-button (click)="clearDates()" matTooltip="Clear dates" *ngIf="startDate || endDate">
+        <mat-icon>clear</mat-icon>
+      </button>
+
+      <button mat-icon-button (click)="refresh()" matTooltip="Refresh" [disabled]="isLoading">
+        <mat-icon [class.spinning]="isLoading">refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <mat-tab-group animationDuration="0ms" class="performance-tabs">
+    <!-- Overview Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>dashboard</mat-icon>
+        <span>Overview</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <!-- Equity Curve -->
+        <section class="section">
+          <h2 class="section-title">Equity Curve</h2>
+          <mat-card class="chart-card">
+            <mat-spinner *ngIf="loading.equity" diameter="40"></mat-spinner>
+            <app-equity-curve-chart
+              *ngIf="!loading.equity"
+              [data]="equityCurve"
+              [height]="350">
+            </app-equity-curve-chart>
+          </mat-card>
+        </section>
+
+        <!-- Returns Summary -->
+        <section class="section">
+          <h2 class="section-title">Returns</h2>
+          <mat-spinner *ngIf="loading.returns" diameter="40"></mat-spinner>
+          <app-returns-summary
+            *ngIf="!loading.returns"
+            [data]="returnsMetrics">
+          </app-returns-summary>
+        </section>
+
+        <!-- Monthly Heatmap -->
+        <section class="section" *ngIf="returnsMetrics?.monthly_returns?.length">
+          <h2 class="section-title">Monthly Returns</h2>
+          <mat-card class="heatmap-card">
+            <app-monthly-heatmap
+              [monthlyReturns]="returnsMetrics?.monthly_returns || []">
+            </app-monthly-heatmap>
+          </mat-card>
+        </section>
+      </div>
+    </mat-tab>
+
+    <!-- Risk Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>shield</mat-icon>
+        <span>Risk</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-spinner *ngIf="loading.risk" diameter="40"></mat-spinner>
+        <app-risk-metrics
+          *ngIf="!loading.risk"
+          [data]="riskMetrics">
+        </app-risk-metrics>
+      </div>
+    </mat-tab>
+
+    <!-- Execution Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>speed</mat-icon>
+        <span>Execution</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-spinner *ngIf="loading.execution" diameter="40"></mat-spinner>
+        <app-execution-quality
+          *ngIf="!loading.execution"
+          [data]="executionMetrics">
+        </app-execution-quality>
+      </div>
+    </mat-tab>
+
+    <!-- Signals Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>insights</mat-icon>
+        <span>Signals</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-spinner *ngIf="loading.signals" diameter="40"></mat-spinner>
+        <app-signal-stats
+          *ngIf="!loading.signals"
+          [data]="signalPerformance">
+        </app-signal-stats>
+      </div>
+    </mat-tab>
+
+    <!-- Exposure Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>pie_chart</mat-icon>
+        <span>Exposure</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-spinner *ngIf="loading.exposure" diameter="40"></mat-spinner>
+        <app-exposure-chart
+          *ngIf="!loading.exposure"
+          [data]="exposureAnalysis">
+        </app-exposure-chart>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

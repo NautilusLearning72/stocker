@@ -69,14 +69,10 @@ class YFinanceCorporateActionsProvider(CorporateActionsProvider):
         for attempt in range(1, max_retries + 1):
             try:
                 actions = ticker.actions
-                if actions is not None and not actions.empty:
-                    return actions
-                logger.warning(
-                    "yfinance returned empty actions for %s (attempt %s/%s)",
-                    symbol,
-                    attempt,
-                    max_retries,
-                )
+                if actions is None or actions.empty:
+                    logger.info("yfinance returned empty actions for %s", symbol)
+                    return None
+                return actions
             except Exception as exc:
                 logger.warning(
                     "yfinance actions fetch failed for %s (attempt %s/%s): %s",

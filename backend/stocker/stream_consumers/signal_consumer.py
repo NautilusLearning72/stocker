@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import Dict, Any
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 import pandas as pd
 from sqlalchemy.future import select
 
@@ -177,7 +177,7 @@ class SignalConsumer(BaseStreamConsumer):
                     "ewma_vol": stmt.excluded.ewma_vol,
                     "direction": stmt.excluded.direction,
                     "target_weight": stmt.excluded.target_weight,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(timezone.utc).replace(tzinfo=None)
                 }
             )
             await session.execute(stmt)

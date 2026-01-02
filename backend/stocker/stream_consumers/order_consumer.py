@@ -166,13 +166,12 @@ class OrderConsumer(BaseStreamConsumer):
                 if qty_to_trade == 0:
                     return
 
-            # 5. Check for existing pending order (idempotency)
+            # 5. Check for existing order on the same date (idempotency)
             existing_order_stmt = select(Order).where(
                 Order.portfolio_id == portfolio_id,
                 Order.symbol == symbol,
                 Order.date == target_date,
-                Order.status.in_(["NEW", "PENDING", "PENDING_EXECUTION"])
-            )
+            ).order_by(Order.created_at.desc()).limit(1)
             existing_result = await session.execute(existing_order_stmt)
             existing_order = existing_result.scalar_one_or_none()
 

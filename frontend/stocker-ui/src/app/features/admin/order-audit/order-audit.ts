@@ -1,9 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatSortModule } from '@angular/material/sort';
+import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
@@ -62,6 +62,7 @@ import { SymbolLink } from '../../../shared/components/symbol-link/symbol-link';
 export class OrderAudit implements OnInit {
   // Data
   records: OrderAuditRecord[] = [];
+  dataSource = new MatTableDataSource<OrderAuditRecord>([]);
   selectedRecord: OrderAuditRecord | null = null;
   summary: AuditSummary | null = null;
   loading = false;
@@ -92,6 +93,18 @@ export class OrderAudit implements OnInit {
   // Table columns
   displayedColumns = ['date', 'symbol', 'side', 'qty', 'status', 'fillRate', 'discrepancies', 'actions'];
 
+  private sort: MatSort | null = null;
+
+  @ViewChild(MatSort)
+  set matSort(sort: MatSort | null) {
+    if (!sort) {
+      return;
+    }
+    this.sort = sort;
+    this.dataSource.sort = sort;
+    this.applyDefaultSort();
+  }
+
   constructor(
     private auditService: AuditService,
     private cdr: ChangeDetectorRef
@@ -106,6 +119,29 @@ export class OrderAudit implements OnInit {
     this.dateTo = today;
     this.dateFrom = oneMonthAgo;
 
+    this.dataSource.sortingDataAccessor = (record, column) => {
+      switch (column) {
+        case 'date': {
+          const createdAt = record.order.created_at;
+          return createdAt ? new Date(createdAt).getTime() : new Date(record.order.date).getTime();
+        }
+        case 'symbol':
+          return record.order.symbol ?? '';
+        case 'side':
+          return record.order.side ?? '';
+        case 'qty':
+          return record.order.qty ?? 0;
+        case 'status':
+          return record.order.status ?? '';
+        case 'fillRate':
+          return record.fill_rate ?? 0;
+        case 'discrepancies':
+          return record.discrepancies?.length ?? 0;
+        default:
+          return '';
+      }
+    };
+
     this.loadData();
     this.loadSummary();
   }
@@ -118,6 +154,8 @@ export class OrderAudit implements OnInit {
       next: (response) => {
         this.records = response.items;
         this.totalRecords = response.total;
+        this.dataSource.data = this.records;
+        this.applyDefaultSort();
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -257,5 +295,13 @@ export class OrderAudit implements OnInit {
       this.sideFilter ||
       this.hasDiscrepancyFilter !== null
     );
+  }
+
+  private applyDefaultSort(): void {
+    if (!this.sort || this.sort.active) {
+      return;
+    }
+    this.sort.active = 'date';
+    this.sort.direction = 'desc';
   }
 }

@@ -27,6 +27,11 @@ from stocker.models.holding import Holding
 from stocker.models.portfolio_state import PortfolioState
 from stocker.models.position_snapshot import PositionSnapshot
 
+# Performance Analytics
+from stocker.models.performance_metrics_daily import PerformanceMetricsDaily
+from stocker.models.execution_metrics_daily import ExecutionMetricsDaily
+from stocker.models.signal_performance import SignalPerformance
+
 # Position Management
 from stocker.models.position_state import PositionState
 
@@ -56,4 +61,7 @@ __all__ = [
     "PositionSnapshot",
     "PositionState",
     "StrategyConfig",
+    "PerformanceMetricsDaily",
+    "ExecutionMetricsDaily",
+    "SignalPerformance",
 ]

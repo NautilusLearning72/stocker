@@ -15,6 +15,7 @@ from stocker.models.holding import Holding
 from stocker.models.portfolio_state import PortfolioState
 from stocker.models.order import Order
 from stocker.models.daily_bar import DailyBar
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,8 @@ class LedgerConsumer(BaseStreamConsumer):
     Listens for 'fills'.
     Updates 'holdings' (Quantity, Avg Cost).
     Updates 'portfolio_state' (Cash, PnL).
+    
+    Idempotency: Tracks processed fills in Redis to prevent double-counting.
     """
     
     def __init__(self):
@@ -31,6 +34,20 @@ class LedgerConsumer(BaseStreamConsumer):
             stream_name=StreamNames.FILLS,
             consumer_group="accountants"
         )
+        self._processed_fills_key = "ledger:processed_fills"
+        self._processed_fills_ttl_sec = 60 * 60 * 24 * 7
+
+    async def _is_fill_processed(self, fill_id: str) -> bool:
+        """Check if fill has already been processed."""
+        if not self.redis or not fill_id:
+            return False
+        return await self.redis.sismember(self._processed_fills_key, fill_id)
+
+    async def _mark_fill_processed(self, fill_id: str) -> None:
+        """Mark fill as processed to prevent duplicate processing."""
+        if self.redis and fill_id:
+            await self.redis.sadd(self._processed_fills_key, fill_id)
+            await self.redis.expire(self._processed_fills_key, self._processed_fills_ttl_sec)
     
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
         fill_id = data.get("fill_id")
@@ -41,10 +58,33 @@ class LedgerConsumer(BaseStreamConsumer):
         price_str = data.get("price")
         
         if not all([symbol, side, qty_str, price_str]):
+            logger.warning(f"Incomplete fill data received: {data}")
+            return
+
+        # Idempotency check: skip if already processed
+        if fill_id and await self._is_fill_processed(fill_id):
+            logger.debug(f"Fill {fill_id} already processed, skipping")
             return
             
         qty = float(qty_str)
         price = float(price_str)
+        
+        # Verify fill exists in database (source of truth)
+        async with AsyncSessionLocal() as session:
+            if fill_id:
+                fill_stmt = select(Fill).where(Fill.fill_id == fill_id)
+                fill_result = await session.execute(fill_stmt)
+                db_fill = fill_result.scalar_one_or_none()
+                
+                if db_fill:
+                    # Use database values as source of truth
+                    qty = float(db_fill.qty)
+                    price = float(db_fill.price)
+                    symbol = db_fill.symbol
+                    side = db_fill.side
+                    logger.debug(f"Verified fill {fill_id} from database: {side} {qty} {symbol} @ {price}")
+                else:
+                    logger.warning(f"Fill {fill_id} not found in database, using stream data")
         
         # Determine Portfolio ID from Order
         async with AsyncSessionLocal() as session:
@@ -115,7 +155,11 @@ class LedgerConsumer(BaseStreamConsumer):
 
             await session.commit()
 
-        logger.info(f"Ledger updated for {side} {qty} {symbol}")
+        # Mark fill as processed for idempotency
+        if fill_id:
+            await self._mark_fill_processed(fill_id)
+
+        logger.info(f"Ledger updated for {side} {qty} {symbol} @ {price} (fill_id={fill_id})")
 
         # 3. Recalculate NAV and publish to portfolio-state stream for MonitorConsumer
         await self._publish_portfolio_state(portfolio_id)

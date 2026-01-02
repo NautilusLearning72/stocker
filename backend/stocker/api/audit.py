@@ -232,12 +232,17 @@ async def build_timeline(
     metric_events: List[MetricEvent]
 ) -> List[DecisionEvent]:
     """Build chronological timeline of decision events."""
+    def normalize_timestamp(ts: datetime) -> datetime:
+        if ts.tzinfo is None:
+            return ts.replace(tzinfo=timezone.utc)
+        return ts.astimezone(timezone.utc)
+
     events = []
 
     # Signal generated
     if signal and signal.created_at:
         events.append(DecisionEvent(
-            timestamp=signal.created_at,
+            timestamp=normalize_timestamp(signal.created_at),
             stage="signal",
             event_type="signal_generated",
             description=f"Signal: direction={signal.direction}, weight={float(signal.target_weight or 0):.2%}",
@@ -255,7 +260,7 @@ async def build_timeline(
         if target.is_capped:
             desc += f" (capped: {target.reason or 'risk limit'})"
         events.append(DecisionEvent(
-            timestamp=target.created_at,
+            timestamp=normalize_timestamp(target.created_at),
             stage="target",
             event_type="target_computed",
             description=desc,
@@ -272,7 +277,7 @@ async def build_timeline(
     for me in metric_events:
         if me.symbol == order_symbol and me.category in ["order", "risk", "diversification"]:
             events.append(DecisionEvent(
-                timestamp=me.timestamp,
+                timestamp=normalize_timestamp(me.timestamp),
                 stage=me.category,
                 event_type=me.event_type,
                 description=format_metric_event(me),
@@ -282,7 +287,7 @@ async def build_timeline(
     # Order created
     if order.created_at:
         events.append(DecisionEvent(
-            timestamp=order.created_at,
+            timestamp=normalize_timestamp(order.created_at),
             stage="execution",
             event_type="order_created",
             description=f"Order: {order.side} {order.qty} @ {order.type}",
@@ -292,7 +297,7 @@ async def build_timeline(
     # Fills
     for fill in fills:
         events.append(DecisionEvent(
-            timestamp=fill.date,
+            timestamp=normalize_timestamp(fill.date),
             stage="execution",
             event_type="fill",
             description=f"Fill: {fill.qty} @ ${fill.price}",
