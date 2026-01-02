@@ -114,6 +114,9 @@ echo "  ✓ Ledger Consumer (PID: $!)"
 poetry run python -m stocker.stream_consumers.monitor_consumer > logs/monitor_consumer.log 2>&1 &
 echo "  ✓ Monitor Consumer (PID: $!)"
 
+poetry run python -m stocker.stream_consumers.exit_consumer > logs/exit_consumer.log 2>&1 &
+echo "  ✓ Exit Consumer (PID: $!)"
+
 # Wait for consumers to initialize
 sleep 2
 

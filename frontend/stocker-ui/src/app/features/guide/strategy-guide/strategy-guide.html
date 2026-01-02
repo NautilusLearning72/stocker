@@ -435,50 +435,116 @@
             <mat-expansion-panel-header>
                 <mat-panel-title>
                     <mat-icon>exit_to_app</mat-icon>
-                    Exit Rules (Optional)
+                    Exit Rules
                 </mat-panel-title>
             </mat-expansion-panel-header>
 
             <div class="section-content">
                 <p>
                     <strong>Position-level exit rules</strong> provide faster exits than waiting for signals to flip.
-                    These protect individual positions using price-based triggers.
+                    These protect individual positions using price-based triggers and run automatically when new
+                    market data arrives.
                 </p>
 
                 <div class="limit-card">
-                    <strong>Status: Disabled by Default</strong>
-                    <p>Set <code>EXIT_RULES_ENABLED=true</code> to activate.</p>
+                    <strong>Status: Configurable</strong>
+                    <p>Set <code>EXIT_RULES_ENABLED=true</code> in Admin → Exit Rules to activate.</p>
+                    <p>When enabled, the <strong>Exit Consumer</strong> evaluates all active positions
+                    after each market data update.</p>
                 </div>
+
+                <h4>How It Works</h4>
+                <ol>
+                    <li>Market data ingestion publishes <code>batch_complete</code> event</li>
+                    <li>Exit Consumer loads all active positions from <code>position_states</code> table</li>
+                    <li>For each position, fetches recent prices and calculates ATR</li>
+                    <li>Evaluates trailing stop, ATR exit, and persistence filter</li>
+                    <li>If exit triggered, publishes to <code>targets</code> stream with exposure=0</li>
+                    <li>Order Consumer generates sell order to close position</li>
+                </ol>
 
                 <h4>Trailing Stop</h4>
                 <p>Exit if price retraces X ATRs from peak since entry:</p>
                 <ul>
-                    <li><strong>Long:</strong> Exit if price drops 3 ATRs below highest price since entry</li>
-                    <li><strong>Short:</strong> Exit if price rises 3 ATRs above lowest price since entry</li>
+                    <li><strong>Long:</strong> Exit if price drops below (Peak - X×ATR)</li>
+                    <li><strong>Short:</strong> Exit if price rises above (Trough + X×ATR)</li>
                 </ul>
                 <div class="formula">
-                    Trigger: (Peak Price - Current Price) > 3 x ATR
+                    Default: <code>TRAILING_STOP_ATR=3.0</code><br>
+                    Example: Peak=$105, ATR=$2, Trigger at $105 - (3×$2) = $99
                 </div>
 
                 <h4>ATR Exit</h4>
                 <p>Exit if price moves Y ATRs against entry price:</p>
+                <ul>
+                    <li><strong>Long:</strong> Exit if price drops below (Entry - Y×ATR)</li>
+                    <li><strong>Short:</strong> Exit if price rises above (Entry + Y×ATR)</li>
+                </ul>
                 <div class="formula">
-                    Trigger: |Entry Price - Current Price| > 2 x ATR
+                    Default: <code>ATR_EXIT_MULTIPLE=2.0</code><br>
+                    Example: Entry=$100, ATR=$2, Exit if price hits $96
                 </div>
 
                 <h4>Persistence Filter</h4>
                 <p>Prevents whipsaws by requiring signal to persist before flipping:</p>
                 <ul>
-                    <li>Signal must persist for <strong>3 consecutive days</strong> before position flips</li>
+                    <li>When signal direction changes, position is <strong>not</strong> immediately flipped</li>
+                    <li>New direction must persist for <code>PERSISTENCE_DAYS</code> consecutive days</li>
                     <li>Reduces trading frequency in choppy markets</li>
                 </ul>
+                <div class="formula">
+                    Default: <code>PERSISTENCE_DAYS=3</code><br>
+                    Signal must stay bearish for 3 days before long position flips to short
+                </div>
 
                 <h4>ATR Calculation</h4>
                 <p>Average True Range measures volatility using high/low/close:</p>
                 <div class="formula">
                     TR = max(High - Low, |High - Close<sub>prev</sub>|, |Low - Close<sub>prev</sub>|)<br>
-                    ATR = 14-day average of TR
+                    ATR = <code>ATR_PERIOD</code>-day average of TR (default: 14)
                 </div>
+
+                <h4>Position State Tracking</h4>
+                <p>The system tracks for each position:</p>
+                <table>
+                    <tr><th>Field</th><th>Purpose</th></tr>
+                    <tr><td>entry_price</td><td>Price when position was opened</td></tr>
+                    <tr><td>peak_price</td><td>Highest price since entry (for longs)</td></tr>
+                    <tr><td>trough_price</td><td>Lowest price since entry (for shorts)</td></tr>
+                    <tr><td>entry_atr</td><td>ATR at time of entry</td></tr>
+                    <tr><td>pending_direction</td><td>Direction signal is trying to flip to</td></tr>
+                    <tr><td>consecutive_flip_days</td><td>Days signal has persisted in new direction</td></tr>
+                </table>
+
+                <h4>Configuration</h4>
+                <table>
+                    <tr><th>Setting</th><th>Default</th><th>Description</th></tr>
+                    <tr>
+                        <td><code>EXIT_RULES_ENABLED</code></td>
+                        <td>false</td>
+                        <td>Master toggle for exit rules</td>
+                    </tr>
+                    <tr>
+                        <td><code>TRAILING_STOP_ATR</code></td>
+                        <td>3.0</td>
+                        <td>ATR multiple for trailing stop</td>
+                    </tr>
+                    <tr>
+                        <td><code>ATR_EXIT_MULTIPLE</code></td>
+                        <td>2.0</td>
+                        <td>ATR multiple for loss-based exit</td>
+                    </tr>
+                    <tr>
+                        <td><code>ATR_PERIOD</code></td>
+                        <td>14</td>
+                        <td>Days for ATR calculation</td>
+                    </tr>
+                    <tr>
+                        <td><code>PERSISTENCE_DAYS</code></td>
+                        <td>3</td>
+                        <td>Days signal must persist before flip</td>
+                    </tr>
+                </table>
             </div>
         </mat-expansion-panel>
 
