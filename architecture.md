@@ -1145,8 +1145,9 @@ id | portfolio_id | date | symbol | raw_exposure | target_exposure | scaling_fac
 
 **orders** - Order instructions
 ```python
-id | portfolio_id | symbol | side | qty | order_type | status | broker_order_id | idempotency_key | submitted_at | filled_at | created_at
+id | order_id | portfolio_id | date | symbol | side | qty | type | status | broker_order_id | created_at | updated_at
 ```
+*Unique constraint on (portfolio_id, symbol, date) for idempotency*
 
 **fills** - Execution confirmations
 ```python

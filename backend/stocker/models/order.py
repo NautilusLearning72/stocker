@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Date, Numeric, Uuid, TIME, TIMESTAMP
+from sqlalchemy import Column, String, Date, Numeric, Uuid, TIME, TIMESTAMP, UniqueConstraint
 from sqlalchemy.orm import relationship
 from stocker.core.database import Base
 from stocker.models.base import IdMixin, TimestampMixin
@@ -9,6 +9,9 @@ class Order(Base, IdMixin, TimestampMixin):
     Execution orders.
     """
     __tablename__ = "orders"
+    __table_args__ = (
+        UniqueConstraint('portfolio_id', 'symbol', 'date', name='uq_order_portfolio_symbol_date'),
+    )
 
     order_id = Column(Uuid, unique=True, nullable=False, default=uuid.uuid4)
     portfolio_id = Column(String(50), nullable=False)

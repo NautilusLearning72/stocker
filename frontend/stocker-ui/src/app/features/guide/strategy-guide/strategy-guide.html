@@ -675,56 +675,99 @@
                 <h4>1. Conviction Factor</h4>
                 <p>Scales positions based on trend strength:</p>
                 <div class="formula-card">
-                    <code>conviction = scale_min + (1 - scale_min) × min(1, |lookback_return| / min_return)</code>
+                    <code>conviction = 0.3 + 0.7 × min(1, |lookback_return| / 0.02)</code>
                 </div>
                 <ul>
-                    <li><strong>Strong trends</strong> (return > 2%): Full position size</li>
-                    <li><strong>Weak trends</strong> (return < 2%): Scaled down to 50-100%</li>
-                    <li><strong>Effect:</strong> Concentrates capital in higher-conviction signals</li>
+                    <li><strong>Strong trends</strong> (|return| ≥ 2%): Full position size (1.0×)</li>
+                    <li><strong>Weak trends</strong> (|return| < 2%): Scaled down to 30-100%</li>
+                    <li><strong>Minimum scale:</strong> <code>conviction_scale_min = 0.3</code> (30%)</li>
+                    <li><strong>Effect:</strong> Concentrates capital in higher-conviction signals, reduces noise trades</li>
                 </ul>
 
                 <h4>2. Sentiment Factor</h4>
                 <p>Adjusts based on market sentiment data (when available):</p>
                 <div class="formula-card">
-                    <code>adjustment = 1.0 ± (sentiment_weight × normalized_sentiment)</code>
+                    <code>sentiment_weight = 0.2</code> (20% influence)<br>
+                    <code>extreme_threshold = 0.7</code> (|sentiment| > 0.7 is extreme)
                 </div>
                 <ul>
-                    <li><strong>Contrarian mode</strong> (default): Reduces longs when sentiment extremely bullish</li>
-                    <li><strong>Momentum mode:</strong> Aligns position size with sentiment direction</li>
-                    <li><strong>Max impact:</strong> ±30% position adjustment</li>
+                    <li><strong>Momentum mode</strong> (default): Boosts positions when sentiment aligns with signal direction
+                        <ul>
+                            <li><em>Aligned sentiment:</em> <code>factor = 1 + (0.2 × |sentiment|)</code>, capped at 1.3× (30% boost)</li>
+                            <li><em>Headwind sentiment:</em> <code>factor = 1 - (0.2 × |sentiment| × 0.5)</code>, floor at 0.7× (30% reduction)</li>
+                            <li><em>Example:</em> Sentiment +0.8 with long signal = 1.16× boost (16%)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Contrarian mode:</strong> Fades extreme sentiment (reduces longs when extremely bullish)
+                        <ul>
+                            <li><em>Extreme aligned:</em> Reduce by 10% (<code>factor = 0.9</code>)</li>
+                            <li><em>Extreme opposite:</em> Boost by 6% (<code>factor = 1.06</code>)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Max impact:</strong> Range 0.7× to 1.3× (±30% bounds)</li>
                 </ul>
 
                 <h4>3. Regime Factor</h4>
-                <p>Reduces exposure during stressed market conditions:</p>
+                <p>Adjusts exposure based on market regime indicators:</p>
                 <table class="example-table">
                     <tr>
-                        <th>Indicator</th>
+                        <th>Condition</th>
                         <th>Threshold</th>
                         <th>Action</th>
                     </tr>
                     <tr>
-                        <td>VIX Level</td>
-                        <td>&gt; 25</td>
-                        <td>Scale to 60%</td>
+                        <td>Risk-Off Breadth</td>
+                        <td>&lt; 40% advancing</td>
+                        <td>Base scale to 50% (<code>regime_defensive_scale = 0.5</code>)</td>
                     </tr>
                     <tr>
-                        <td>Market Breadth</td>
-                        <td>&lt; 40%</td>
-                        <td>Scale to 60%</td>
+                        <td>VIX Penalty</td>
+                        <td>VIX &gt; 25</td>
+                        <td>Additional penalty: <code>(VIX - 25) / 50</code>, max 30%</td>
+                    </tr>
+                    <tr>
+                        <td>Combined Floor</td>
+                        <td>Both triggered</td>
+                        <td>Minimum 30% scale (0.3×)</td>
+                    </tr>
+                    <tr>
+                        <td>Breadth Boost</td>
+                        <td>&gt; 60% + Long signal</td>
+                        <td>Boost to 110% (1.1×)</td>
+                    </tr>
+                    <tr>
+                        <td>Neutral + VIX</td>
+                        <td>40-60% breadth</td>
+                        <td>Apply VIX penalty only (if VIX &gt; 25)</td>
                     </tr>
                 </table>
-                <p>When either condition is met, positions are reduced to the defensive scale factor.</p>
+                <p><strong>Risk-Off Regime:</strong> When breadth falls below 40%, base defensive scale of 50% is applied, then VIX penalty is added on top. Floor ensures at least 30% sizing even in worst conditions.</p>
+                <p><strong>VIX Penalty:</strong> Gradual scaling (e.g., VIX 35 → 20% penalty, VIX 75+ → 30% penalty capped).</p>
+                <p><strong>Strong Market:</strong> When breadth exceeds 60% and signal is long (+1), positions get 10% boost.</p>
 
                 <h4>4. Quality Factor</h4>
-                <p>Tilts toward more stable instruments using three metrics:</p>
+                <p>Applies penalties to reduce exposure to small-cap, extreme beta, or illiquid instruments:</p>
                 <ul>
-                    <li><strong>Market Cap:</strong> Slight preference for larger companies (log-scaled)</li>
-                    <li><strong>Beta:</strong> Reduces high-beta positions, increases low-beta</li>
-                    <li><strong>Liquidity:</strong> Slight preference for higher average volume</li>
+                    <li><strong>Market Cap Penalty:</strong> Instruments with market cap &lt; $1B get reduced sizing
+                        <ul>
+                            <li>Scales linearly based on market cap shortfall</li>
+                            <li>Examples: $500M cap = 3.75% penalty, $100M cap = 6.75% penalty</li>
+                        </ul>
+                    </li>
+                    <li><strong>Beta Penalties:</strong>
+                        <ul>
+                            <li><em>Low beta (&lt; 0.8):</em> Fixed 3% reduction ("might miss moves")</li>
+                            <li><em>High beta (&gt; 1.5):</em> Penalty scales with volatility (e.g., beta=2.0 → 2.25% penalty, capped at 20%)</li>
+                            <li><em>Ideal range:</em> 0.8-1.5 (no adjustment)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Liquidity Penalty:</strong> Instruments with &lt; $5M average daily volume get 4.5% reduction</li>
                 </ul>
                 <div class="limit-card">
-                    <strong>Combined Effect</strong>
-                    <p>Quality adjustment typically ranges from 0.85× to 1.15× based on instrument characteristics.</p>
+                    <strong>Penalty-Only System</strong>
+                    <p>Quality factor applies penalties for undesirable characteristics. No positive boosts are applied.</p>
+                    <p>Adjustment range: 0.5× to 1.0× (maximum 50% reduction from combined penalties).</p>
+                    <p>Quality weight: <code>quality_weight = 0.15</code> (15% scales all quality penalties).</p>
                 </div>
 
                 <h4>Enhancement Pipeline</h4>
@@ -905,7 +948,7 @@
                     <li><strong>Default Mode (<code>ORDER_EXECUTION_TYPE=moo</code>):</strong> Market-on-Open orders using Alpaca's <code>OPG</code> time-in-force. Orders submitted after close are queued and execute at 9:30 AM ET next trading day.</li>
                     <li><strong>Alternative (<code>ORDER_EXECUTION_TYPE=market</code>):</strong> Immediate market orders with <code>DAY</code> time-in-force. Only executes when market is open; orders submitted after close are marked PENDING.</li>
                     <li><strong>Minimum Notional:</strong> $50 per order (avoid churn)</li>
-                    <li><strong>Idempotency:</strong> Orders have unique keys to prevent duplicates</li>
+                    <li><strong>Idempotency:</strong> Unique constraint on <code>(portfolio_id, symbol, date)</code> prevents duplicate orders—one order per symbol per day</li>
                 </ul>
 
                 <h4>MOO Execution Timeline</h4>

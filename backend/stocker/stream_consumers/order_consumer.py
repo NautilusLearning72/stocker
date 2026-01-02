@@ -4,6 +4,7 @@ import uuid
 from typing import Dict, Any
 from datetime import date
 from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
 
 from stocker.stream_consumers.base import BaseStreamConsumer
 from stocker.core.config import settings
@@ -208,7 +209,13 @@ class OrderConsumer(BaseStreamConsumer):
                 status="NEW"
             )
             session.add(new_order)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError:
+                # Race condition: another worker already created order for this symbol/date
+                logger.info(f"Duplicate order blocked by constraint for {symbol} on {target_date}, skipping")
+                await session.rollback()
+                return
 
             # Emit order created metric
             metrics.order_created(symbol, side, qty_to_trade, notional_value)
