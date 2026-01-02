@@ -256,7 +256,8 @@
                 <p>Convert return to direction:</p>
                 <div class="formula">
                     direction = +1 if R > 0 (LONG)<br>
-                    direction = -1 if R < 0 (SHORT)
+                    direction = -1 if R < 0 (SHORT)<br>
+                    direction = 0 if R = 0 (FLAT)
                 </div>
 
                 <h4>Interpretation</h4>
@@ -264,7 +265,8 @@
                     <li><strong>126 days</strong> = approximately 6 months of trading days</li>
                     <li>If price is higher than 6 months ago, go long (trend is up)</li>
                     <li>If price is lower than 6 months ago, go short (trend is down)</li>
-                    <li>No signal strength - just direction (binary)</li>
+                    <li>If price is unchanged, stay flat (no trend)</li>
+                    <li>Direction is binary (+1/-1/0), but <strong>position size is continuous</strong> (see Position Sizing)</li>
                 </ul>
             </div>
         </mat-expansion-panel>
@@ -343,9 +345,10 @@
                     following the RiskMetrics methodology.
                 </p>
 
-                <h4>Daily Log Returns</h4>
+                <h4>Daily Returns</h4>
+                <p>Simple percentage returns (not log returns):</p>
                 <div class="formula">
-                    r<sub>t</sub> = ln(P<sub>t</sub> / P<sub>t-1</sub>)
+                    r<sub>t</sub> = (P<sub>t</sub> / P<sub>t-1</sub>) - 1
                 </div>
 
                 <h4>EWMA Variance</h4>
@@ -385,15 +388,21 @@
                 </p>
 
                 <h4>Raw Weight Calculation</h4>
+                <p>Direction is binary, but <strong>size is continuous</strong> based on volatility:</p>
                 <div class="formula">
                     weight = (target_vol / realized_vol) &times; direction
                 </div>
+                <p>
+                    Even though direction is just +1 or -1, the final weight varies based on each
+                    asset's volatility. This is <strong>inverse-volatility sizing</strong>.
+                </p>
 
                 <h4>Inverse-Volatility Concept</h4>
                 <ul>
                     <li>Higher volatility assets get <strong>smaller</strong> positions</li>
                     <li>Lower volatility assets get <strong>larger</strong> positions</li>
                     <li>Aims to equalize risk contribution from each asset</li>
+                    <li>A 20% vol asset gets half the weight of a 10% vol asset</li>
                 </ul>
 
                 <h4>Example</h4>

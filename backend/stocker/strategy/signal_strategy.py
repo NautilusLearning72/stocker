@@ -145,22 +145,38 @@ class SignalStrategy:
         lookback_price = prices['adj_close'].iloc[-(self.config.lookback_days + 1)]
         lookback_return = (current_price / lookback_price) - 1
         
-        direction = 1 if lookback_return > 0 else -1
+        # Direction: +1 long, -1 short, 0 flat (when return is exactly zero)
+        if lookback_return > 0:
+            direction = 1
+        elif lookback_return < 0:
+            direction = -1
+        else:
+            direction = 0  # Exactly flat - no trend signal
 
-        # Check trend confirmation (if enabled)
-        confirmed = self._is_trend_confirmed(prices, direction, symbol)
+        # Check trend confirmation (if enabled and we have a direction)
+        confirmed = (
+            self._is_trend_confirmed(prices, direction, symbol)
+            if direction != 0
+            else False
+        )
 
-        # Calculate Target Weight (Inverse Volatility)
+        # Calculate Target Weight (Inverse Volatility Sizing)
+        # Direction is binary (+1/-1/0) but weight is continuous based on vol
         # We handle caps in the PortfolioOptimizer, here gives raw theoretical weight
-        # If returns are flat/zero vol, avoid div by zero
-        if not confirmed:
+        if direction == 0:
+            # No trend - go flat
+            raw_weight = 0.0
+            final_direction = 0
+        elif not confirmed:
             # Trend not confirmed - go flat
             raw_weight = 0.0
             final_direction = 0
         elif annualized_vol < 1e-6:
+            # Avoid div by zero on near-zero volatility
             raw_weight = 0.0
             final_direction = 0
         else:
+            # Inverse volatility sizing: lower vol = larger position
             raw_weight = (self.config.target_vol / annualized_vol) * direction
             final_direction = direction
 

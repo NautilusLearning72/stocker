@@ -158,7 +158,9 @@ class PortfolioOptimizer:
 
         # 3. Process each signal through individual caps
         for signal in signals:
-            weight = signal.raw_weight * scale_factor
+            # Use enhanced weight if available, otherwise raw weight
+            base_weight = raw_exposures.get(signal.symbol, signal.raw_weight)
+            weight = base_weight * scale_factor
 
             reason = []
             is_capped = False
