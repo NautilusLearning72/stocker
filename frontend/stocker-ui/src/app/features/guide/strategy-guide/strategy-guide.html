@@ -65,67 +65,85 @@
                     └──────────┬───────────┘
                                │
                                ▼
-                    ┌──────────────────────┐
-                    │   market-bars stream │  ← Redis Stream
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   Signal Consumer    │
-                    │  (TSMOM + EWMA vol)  │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │    signals stream    │  ← Redis Stream
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │  Portfolio Consumer  │
-                    │  (optimizer + caps)  │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │    targets stream    │  ← Redis Stream
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │    Order Consumer    │
-                    │ (diff current vs     │
-                    │  target positions)   │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │    orders stream     │  ← Redis Stream
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   Broker Consumer    │
-                    │  (Alpaca execution)  │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │     fills stream     │  ← Redis Stream
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   Ledger Consumer    │
-                    │  (Holdings + Cash)   │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   Database Updates   │
-                    │ (portfolio_state,    │
-                    │  holdings, orders)   │
-                    └──────────────────────┘
+              ┌────────────────────────────────┐
+              │      market-bars stream        │  ← Redis Stream
+              └────┬──────────────────────┬────┘
+                   │                      │
+                   │                      └──────────────┐
+                   ▼                                     ▼
+        ┌──────────────────────┐           ┌──────────────────────┐
+        │   Signal Consumer    │           │    Exit Consumer     │
+        │  (TSMOM + EWMA vol)  │           │  (Trailing stops,    │
+        └──────────┬───────────┘           │   ATR exits)         │
+                   │                       └──────────┬───────────┘
+                   ▼                                  │
+        ┌──────────────────────┐                     │
+        │    signals stream    │  ← Redis Stream     │
+        └──────────┬───────────┘                     │
+                   │                                  │
+                   ▼                                  │
+        ┌──────────────────────┐                     │
+        │  Portfolio Consumer  │                     │
+        │  (optimizer + caps)  │                     │
+        └──────────┬───────────┘                     │
+                   │                                  │
+                   ▼                                  │
+        ┌──────────────────────┐                     │
+        │    targets stream    │  ← Redis Stream ←───┘
+        └──────────┬───────────┘     (exit signals: target=0)
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │    Order Consumer    │
+        │ (diff current vs     │
+        │  target positions)   │
+        └──────────┬───────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │    orders stream     │  ← Redis Stream
+        └──────────┬───────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │   Broker Consumer    │
+        │  (Alpaca execution)  │
+        └──────────┬───────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │     fills stream     │  ← Redis Stream
+        └──────────┬───────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │   Ledger Consumer    │
+        │  (Holdings + Cash)   │
+        └──────────┬───────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │ portfolio-state str. │  ← Redis Stream
+        └──────────┬───────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │   Monitor Consumer   │
+        │  (Kill switch, DD    │
+        │   alerts)            │
+        └──────────┬───────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │    alerts stream     │  ← Redis Stream
+        └──────────┬───────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │   Database Updates   │
+        │ (portfolio_state,    │
+        │  holdings, orders)   │
+        └──────────────────────┘
 </pre>
                 </div>
 
@@ -145,6 +163,12 @@
                             <td><code>market-bars</code></td>
                             <td><code>signals</code></td>
                             <td>Computes TSMOM direction + EWMA vol → target weights</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Exit</strong></td>
+                            <td><code>market-bars</code></td>
+                            <td><code>targets</code></td>
+                            <td>Evaluates trailing stops, ATR exits → publishes exit signals (target=0)</td>
                         </tr>
                         <tr>
                             <td><strong>Portfolio</strong></td>
@@ -167,7 +191,7 @@
                         <tr>
                             <td><strong>Ledger</strong></td>
                             <td><code>fills</code></td>
-                            <td>(database)</td>
+                            <td><code>portfolio-state</code></td>
                             <td>Updates holdings, cash, portfolio state</td>
                         </tr>
                         <tr>
@@ -184,12 +208,26 @@
                     The full pipeline is triggered by <code>run_pipeline.sh</code>, which:
                 </p>
                 <ol>
-                    <li>Starts all stream consumers (Signal, Portfolio, Order, Broker, Ledger)</li>
-                    <li>Runs the <code>ingest_market_data()</code> task</li>
+                    <li>Runs database migrations (<code>alembic upgrade head</code>)</li>
+                    <li>Refreshes instrument metrics for configured universes (<code>refresh_universe.sh</code>)</li>
+                    <li>Ingests market sentiment for global universe</li>
+                    <li>Ingests corporate actions for global universe</li>
+                    <li>Initializes portfolio if not exists</li>
+                    <li>Starts all stream consumers (Signal, Portfolio, Order, Broker, Ledger, Monitor, Exit)</li>
+                    <li>Triggers <code>ingest_market_data()</code> task</li>
+                    <li>Syncs pending MOO (Market-On-Open) order fills</li>
                     <li>Market data task publishes to <code>market-bars</code> stream</li>
                     <li>Each consumer processes events and publishes downstream</li>
                     <li>Orders are generated automatically from signal → target → order flow</li>
                 </ol>
+
+                <h4>Order Idempotency</h4>
+                <p>
+                    The Order Consumer prevents duplicate orders by checking for existing orders with the same
+                    <code>(portfolio_id, symbol, date)</code> combination via database lookup. If an order already
+                    exists for that symbol on that date, the new order is skipped. This is a runtime check, not
+                    a database unique constraint.
+                </p>
             </div>
         </mat-expansion-panel>
 
@@ -582,12 +620,25 @@
                 </div>
 
                 <h4>Correlation Throttle</h4>
-                <p>Reduces position adds when highly correlated with existing holdings:</p>
+                <div class="limit-card">
+                    <strong>Status: Disabled by Default</strong>
+                    <p>Set <code>CORRELATION_THROTTLE_ENABLED=true</code> to activate.</p>
+                </div>
+                <p>Reduces new or increasing positions when highly correlated with existing holdings:</p>
                 <ul>
-                    <li><strong>Threshold:</strong> Correlation > 0.70 triggers throttle</li>
-                    <li><strong>Action:</strong> New position scaled to 50% of target</li>
+                    <li><strong>Applies to:</strong> Only NEW or INCREASING positions (not decreases or exits)</li>
+                    <li><strong>Requirements:</strong>
+                        <ul>
+                            <li>Correlation throttle must be enabled</li>
+                            <li>Historical returns data must be available</li>
+                            <li>Current positions data must be provided</li>
+                        </ul>
+                    </li>
+                    <li><strong>Threshold:</strong> Correlation > 0.70 with any existing position</li>
+                    <li><strong>Action:</strong> Position scaled to 50% of target</li>
                     <li><strong>Lookback:</strong> 60-day rolling correlation window</li>
                 </ul>
+                <p><em>Note: Checks correlation against all existing positions with >1% exposure.</em></p>
             </div>
         </mat-expansion-panel>
 
@@ -696,6 +747,7 @@
                     <strong>Enabled by Default</strong>
                     <p>Supports up to 4 decimal places for precise position sizing.</p>
                     <p>Compatible with Alpaca fractional share orders.</p>
+                    <p><strong>Important:</strong> Fractional short selling is NOT supported by Alpaca. When fractional mode is enabled, sell orders are capped to flatten existing positions only (no shorting allowed), regardless of the <code>ALLOW_SHORT_SELLING</code> setting.</p>
                 </div>
 
                 <h4>Minimum Notional</h4>
@@ -723,7 +775,8 @@
                 <div class="limit-card">
                     <strong>Enabled by Default</strong>
                     <p>Set <code>ALLOW_SHORT_SELLING=false</code> to disable.</p>
-                    <p>When disabled, only long positions are taken.</p>
+                    <p><strong>Fractional Mode Restriction:</strong> When fractional orders are enabled, short selling is automatically disabled regardless of this setting (Alpaca broker limitation). The broker consumer caps sell orders to flatten existing positions only.</p>
+                    <p><strong>Integer Mode:</strong> Short selling works normally when fractional mode is disabled (<code>FRACTIONAL_SIZING_ENABLED=false</code>).</p>
                 </div>
             </div>
         </mat-expansion-panel>
