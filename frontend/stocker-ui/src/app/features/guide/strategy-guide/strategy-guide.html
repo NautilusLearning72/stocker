@@ -15,7 +15,7 @@
             <div class="section-content">
                 <p>
                     This is a <strong>systematic, trend-following strategy</strong> designed for production-grade
-                    reliability. It trades a small universe of liquid instruments (5-8 assets) using daily bars.
+                    reliability. It trades a configurable universe of liquid instruments using daily bars.
                 </p>
 
                 <h4>Philosophy</h4>
@@ -26,14 +26,26 @@
                     <li>Paper trade first, then graduate to small live size</li>
                 </ul>
 
-                <h4>Default Universe (ETFs)</h4>
-                <ul>
-                    <li><strong>SPY</strong> - US Equities</li>
-                    <li><strong>TLT</strong> - US Treasuries (Long Duration)</li>
-                    <li><strong>GLD</strong> - Gold</li>
-                    <li><strong>DBC</strong> - Broad Commodities</li>
-                    <li><strong>UUP</strong> - USD Index (Optional)</li>
-                </ul>
+                <h4>Trading Universe (Configurable)</h4>
+                <p>
+                    The universe is configurable via settings. Two modes are supported:
+                </p>
+
+                <div class="limit-card">
+                    <strong>Static Universe Mode (Default)</strong>
+                    <p><code>USE_DYNAMIC_UNIVERSE=false</code></p>
+                    <p>Trades a fixed list of symbols configured in <code>TRADING_UNIVERSE</code> setting.</p>
+                    <p><strong>Default List:</strong> SPY, TLT, GLD, DBC, UUP (5 liquid ETFs)</p>
+                    <p><em>Can be customized to any list of symbols.</em></p>
+                </div>
+
+                <div class="limit-card">
+                    <strong>Dynamic Universe Mode (Optional)</strong>
+                    <p><code>USE_DYNAMIC_UNIVERSE=true</code></p>
+                    <p>Universe refreshed daily from market data (e.g., top N symbols by liquidity).</p>
+                    <p><strong>Universe Size:</strong> Configurable via <code>UNIVERSE_SIZE</code> (default: 250)</p>
+                    <p><strong>Source:</strong> Configurable via <code>UNIVERSE_SOURCE</code> (e.g., "alpaca_most_actives")</p>
+                </div>
             </div>
         </mat-expansion-panel>
 

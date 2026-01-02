@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import date, datetime
 from decimal import Decimal
 from sqlalchemy.future import select
@@ -14,6 +14,7 @@ from stocker.models.fill import Fill
 from stocker.models.holding import Holding
 from stocker.models.portfolio_state import PortfolioState
 from stocker.models.order import Order
+from stocker.models.position_state import PositionState
 from stocker.models.daily_bar import DailyBar
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -48,6 +49,91 @@ class LedgerConsumer(BaseStreamConsumer):
         if self.redis and fill_id:
             await self.redis.sadd(self._processed_fills_key, fill_id)
             await self.redis.expire(self._processed_fills_key, self._processed_fills_ttl_sec)
+
+    def _direction_from_qty(self, qty: float) -> int:
+        if qty > 0:
+            return 1
+        if qty < 0:
+            return -1
+        return 0
+
+    async def _update_position_state(
+        self,
+        session,
+        portfolio_id: str,
+        symbol: str,
+        fill_date: date,
+        trade_price: float,
+        old_qty: float,
+        new_qty: float,
+        cost_basis: Optional[float],
+    ) -> None:
+        old_direction = self._direction_from_qty(old_qty)
+        new_direction = self._direction_from_qty(new_qty)
+
+        stmt = select(PositionState).where(
+            PositionState.portfolio_id == portfolio_id,
+            PositionState.symbol == symbol,
+        )
+        result = await session.execute(stmt)
+        position = result.scalar_one_or_none()
+
+        if new_direction == 0:
+            if not position:
+                return
+            position.direction = 0
+            position.entry_date = None
+            position.entry_price = None
+            position.peak_price = None
+            position.trough_price = None
+            position.entry_atr = None
+            position.pending_direction = None
+            position.signal_flip_date = None
+            position.consecutive_flip_days = 0
+            return
+
+        is_new_entry = old_direction == 0
+        is_flip = old_direction != 0 and new_direction != old_direction
+
+        if not position:
+            position = PositionState(
+                portfolio_id=portfolio_id,
+                symbol=symbol,
+                direction=new_direction,
+                entry_date=fill_date,
+                entry_price=trade_price,
+                peak_price=trade_price,
+                trough_price=trade_price,
+                entry_atr=None,
+                pending_direction=None,
+                signal_flip_date=None,
+                consecutive_flip_days=0,
+            )
+            session.add(position)
+            return
+
+        if is_new_entry or is_flip:
+            position.direction = new_direction
+            position.entry_date = fill_date
+            position.entry_price = trade_price
+            position.peak_price = trade_price
+            position.trough_price = trade_price
+            position.entry_atr = None
+            position.pending_direction = None
+            position.signal_flip_date = None
+            position.consecutive_flip_days = 0
+            return
+
+        position.direction = new_direction
+        if cost_basis is not None:
+            position.entry_price = cost_basis
+
+        if new_direction == 1:
+            if position.peak_price is None or trade_price > float(position.peak_price):
+                position.peak_price = trade_price
+        else:
+            if position.trough_price is None or trade_price < float(position.trough_price):
+                position.trough_price = trade_price
     
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
         fill_id = data.get("fill_id")
@@ -69,6 +155,7 @@ class LedgerConsumer(BaseStreamConsumer):
         qty = float(qty_str)
         price = float(price_str)
         
+        fill_date = date.today()
         # Verify fill exists in database (source of truth)
         async with AsyncSessionLocal() as session:
             if fill_id:
@@ -82,6 +169,7 @@ class LedgerConsumer(BaseStreamConsumer):
                     price = float(db_fill.price)
                     symbol = db_fill.symbol
                     side = db_fill.side
+                    fill_date = db_fill.date.date()
                     logger.debug(f"Verified fill {fill_id} from database: {side} {qty} {symbol} @ {price}")
                 else:
                     logger.warning(f"Fill {fill_id} not found in database, using stream data")
@@ -104,6 +192,9 @@ class LedgerConsumer(BaseStreamConsumer):
             
             signed_qty = qty if side == "BUY" else -qty
             trade_value = qty * price
+            old_qty = float(holding.qty) if holding else 0.0
+            new_qty = old_qty + signed_qty
+            current_cost_basis: Optional[float] = None
             
             if holding:
                 # Update Avg Cost
@@ -111,7 +202,6 @@ class LedgerConsumer(BaseStreamConsumer):
                 # ONLY if increasing position? Standard accounting varies. 
                 # Simple Weighted Average:
                 total_cost = (float(holding.qty) * float(holding.cost_basis)) + (signed_qty * price)
-                new_qty = float(holding.qty) + signed_qty
                 
                 if new_qty == 0:
                      # Closed position
@@ -125,6 +215,7 @@ class LedgerConsumer(BaseStreamConsumer):
                          # Adding to position
                          holding.cost_basis = total_cost / new_qty
                      # Else reducing, cost basis preserved
+                     current_cost_basis = float(holding.cost_basis)
             else:
                  # New Position
                  new_holding = Holding(
@@ -136,6 +227,19 @@ class LedgerConsumer(BaseStreamConsumer):
                      market_value=trade_value # Approx
                  )
                  session.add(new_holding)
+                 current_cost_basis = price
+
+            # 1b. Update PositionState for exit rules
+            await self._update_position_state(
+                session=session,
+                portfolio_id=portfolio_id,
+                symbol=symbol,
+                fill_date=fill_date,
+                trade_price=price,
+                old_qty=old_qty,
+                new_qty=new_qty,
+                cost_basis=current_cost_basis,
+            )
             
             # 2. Update Cash
             # Fetch latest state

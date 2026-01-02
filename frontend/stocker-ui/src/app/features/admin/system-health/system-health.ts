@@ -62,6 +62,7 @@ export class SystemHealth implements OnInit {
       { name: 'Redis Streams', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
       { name: 'PostgreSQL', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
       { name: 'Signal Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
+      { name: 'Exit Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
       { name: 'Portfolio Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
       { name: 'Order Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
       { name: 'Broker Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },

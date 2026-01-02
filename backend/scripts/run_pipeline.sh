@@ -82,6 +82,33 @@ else:
     print(f'✓ Portfolio exists: NAV=\${result[\"nav\"]:,.2f}, Cash=\${result[\"cash\"]:,.2f}')
 "
 
+# Sync portfolio state/holdings from broker (if configured)
+if [ -n "$ALPACA_API_KEY" ] && [ -n "$ALPACA_SECRET_KEY" ]; then
+    echo -e "\n${YELLOW}🔄 Syncing portfolio from broker...${NC}"
+    poetry run python -c "
+import asyncio
+from stocker.services.portfolio_sync_service import PortfolioSyncService
+
+result = asyncio.run(PortfolioSyncService().sync_portfolio('main'))
+print(
+    '✓ Portfolio sync completed: '
+    f\"orders+{result['orders_created']} updated={result['orders_updated']} \"
+    f\"fills+{result['fills_created']} holdings={result['holdings_refreshed']} \"
+    f\"state={result['portfolio_state_updated']}\"
+)
+"
+else
+    echo -e "${YELLOW}⚠️  Skipping broker sync: Alpaca credentials not set.${NC}"
+fi
+
+# Sync position states for exit rules
+echo -e "\n${YELLOW}🧭 Syncing position states from holdings...${NC}"
+poetry run python -c "
+from stocker.tasks.position_state import sync_position_states
+result = sync_position_states()
+print(f'✓ Position state sync completed: {result}')
+"
+
 # Create log directory
 mkdir -p logs
 

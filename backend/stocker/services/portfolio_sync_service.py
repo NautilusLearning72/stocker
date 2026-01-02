@@ -124,27 +124,74 @@ class PortfolioSyncService:
 
         async with AsyncSessionLocal() as session:
             try:
-                broker_ids = [str(order.id) for order in orders if getattr(order, "id", None)]
+                order_candidates = _dedupe_alpaca_orders(orders)
+                activity_keys: set[tuple[str, date]] = set()
+                for activity in activities:
+                    symbol = str(activity.get("symbol") or "").strip()
+                    if not symbol:
+                        continue
+                    activity_date = _coerce_date(self._activity_timestamp(activity))
+                    activity_keys.add((symbol, activity_date))
+
+                all_order_keys = set(order_candidates.keys()) | activity_keys
+                existing_orders_by_symbol_date: dict[tuple[str, date], Order] = {}
+                if all_order_keys:
+                    order_dates = [key[1] for key in all_order_keys]
+                    min_date = min(order_dates)
+                    max_date = max(order_dates)
+                    result = await session.execute(
+                        select(Order).where(
+                            Order.portfolio_id == portfolio_id,
+                            Order.date >= min_date,
+                            Order.date <= max_date,
+                        )
+                    )
+                    existing_orders_by_symbol_date = {
+                        (order.symbol, order.date): order for order in result.scalars()
+                    }
+
+                broker_ids = [
+                    str(order.id)
+                    for order in order_candidates.values()
+                    if getattr(order, "id", None)
+                ]
                 existing_orders: dict[str, Order] = {}
                 if broker_ids:
                     result = await session.execute(
                         select(Order).where(Order.broker_order_id.in_(broker_ids))
                     )
-                    existing_orders = {order.broker_order_id: order for order in result.scalars()}
+                    existing_orders = {
+                        order.broker_order_id: order
+                        for order in result.scalars()
+                        if order.broker_order_id
+                    }
 
-                for alpaca_order in orders:
-                    broker_id = str(alpaca_order.id)
-                    order_record = existing_orders.get(broker_id)
+                for (symbol, order_date), alpaca_order in order_candidates.items():
+                    broker_id_value = getattr(alpaca_order, "id", None)
+                    broker_id = str(broker_id_value) if broker_id_value is not None else ""
+                    order_record = existing_orders.get(broker_id) if broker_id else None
                     if order_record:
                         self._apply_alpaca_order(order_record, alpaca_order, portfolio_id)
+                        existing_orders_by_symbol_date[(symbol, order_date)] = order_record
                         orders_updated += 1
-                    else:
-                        order_record = self._build_order_from_alpaca(
-                            alpaca_order, portfolio_id=portfolio_id
-                        )
-                        session.add(order_record)
+                        continue
+
+                    order_record = existing_orders_by_symbol_date.get((symbol, order_date))
+                    if order_record:
+                        self._apply_alpaca_order(order_record, alpaca_order, portfolio_id)
+                        if broker_id:
+                            existing_orders[broker_id] = order_record
+                        orders_updated += 1
+                        continue
+
+                    order_record = self._build_order_from_alpaca(
+                        alpaca_order, portfolio_id=portfolio_id
+                    )
+                    session.add(order_record)
+                    if broker_id:
                         existing_orders[broker_id] = order_record
-                        orders_created += 1
+                    existing_orders_by_symbol_date[(symbol, order_date)] = order_record
+                    orders_created += 1
 
                 await session.execute(
                     delete(Holding).where(
@@ -299,14 +346,25 @@ class PortfolioSyncService:
                     broker_order_id = activity.get("order_id")
                     if not broker_order_id:
                         continue
+                    broker_order_id = str(broker_order_id)
                     order_record = existing_orders.get(broker_order_id)
                     if not order_record:
-                        order_record = self._build_order_from_activity(
-                            activity, portfolio_id=portfolio_id
-                        )
-                        session.add(order_record)
-                        existing_orders[broker_order_id] = order_record
-                        orders_created += 1
+                        activity_symbol = str(activity.get("symbol") or "").strip()
+                        activity_date = _coerce_date(self._activity_timestamp(activity))
+                        activity_key = (activity_symbol, activity_date)
+                        order_record = existing_orders_by_symbol_date.get(activity_key)
+                        if order_record:
+                            order_record.broker_order_id = broker_order_id
+                            existing_orders[broker_order_id] = order_record
+                            orders_updated += 1
+                        else:
+                            order_record = self._build_order_from_activity(
+                                activity, portfolio_id=portfolio_id
+                            )
+                            session.add(order_record)
+                            existing_orders[broker_order_id] = order_record
+                            existing_orders_by_symbol_date[activity_key] = order_record
+                            orders_created += 1
 
                     if order_record.order_id in existing_fill_orders:
                         continue
@@ -411,6 +469,37 @@ class PortfolioSyncService:
         if not activity_id:
             return ""
         return f"alpaca:{activity_id}"
+
+
+def _alpaca_order_date(order: Any) -> date:
+    return _coerce_date(
+        getattr(order, "submitted_at", None)
+        or getattr(order, "created_at", None)
+        or getattr(order, "filled_at", None)
+    )
+
+
+def _alpaca_order_timestamp(order: Any) -> datetime:
+    for attr in ("submitted_at", "created_at", "filled_at"):
+        parsed = _parse_datetime(getattr(order, attr, None))
+        if parsed:
+            return parsed
+    return datetime.min
+
+
+def _dedupe_alpaca_orders(orders: list[Any]) -> dict[tuple[str, date], Any]:
+    deduped: dict[tuple[str, date], tuple[Any, datetime]] = {}
+    for order in orders:
+        symbol = str(getattr(order, "symbol", "") or "").strip()
+        if not symbol:
+            continue
+        order_date = _alpaca_order_date(order)
+        order_ts = _alpaca_order_timestamp(order)
+        key = (symbol, order_date)
+        existing = deduped.get(key)
+        if existing is None or order_ts > existing[1]:
+            deduped[key] = (order, order_ts)
+    return {key: value[0] for key, value in deduped.items()}
 
 
 def _normalize_side(value: Any) -> str:

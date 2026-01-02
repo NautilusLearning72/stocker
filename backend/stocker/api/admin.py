@@ -201,6 +201,7 @@ async def get_system_health() -> List[ServiceHealth]:
     # Consumer health (idle time from Redis consumer groups)
     consumers = [
         ("Signal Consumer", StreamNames.MARKET_BARS, "signal-processors"),
+        ("Exit Consumer", StreamNames.MARKET_BARS, "exit-evaluators"),
         ("Portfolio Consumer", StreamNames.SIGNALS, "portfolio-managers"),
         ("Order Consumer", StreamNames.TARGETS, "order-managers"),
         ("Broker Consumer", StreamNames.ORDERS, "brokers"),
