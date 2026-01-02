@@ -53,13 +53,13 @@ class ExitConsumer(BaseStreamConsumer):
         self.exit_engine = ExitRuleEngine(
             ExitConfig(
                 enabled=settings.EXIT_RULES_ENABLED,
-                trailing_stop_atr=settings.TRAILING_STOP_ATR,
+                trailing_stop_atr=settings.TRAILING_STOP_ATR_MULTIPLE,
                 atr_exit_multiple=settings.ATR_EXIT_MULTIPLE,
                 atr_period=settings.ATR_PERIOD,
                 persistence_days=settings.PERSISTENCE_DAYS,
             )
         )
-        self.portfolio_id = "default"
+        self.portfolio_id = "main"
 
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
         """Process market-bars events to evaluate exit rules."""

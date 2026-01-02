@@ -375,7 +375,7 @@ class PortfolioConsumer(BaseStreamConsumer):
             
             if settings.CORRELATION_THROTTLE_ENABLED and signal_models:
                 symbols = [s.symbol for s in signal_models]
-                portfolio_id = "default"  # TODO: support multiple portfolios
+                portfolio_id = "main"  # TODO: support multiple portfolios
                 
                 historical_returns = await self._fetch_historical_returns(
                     session, symbols, effective_date,
