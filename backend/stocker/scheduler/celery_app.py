@@ -42,4 +42,21 @@ app.conf.beat_schedule = {
             minute=settings.SENTIMENT_REFRESH_MINUTE,
         ),
     },
+    # MOO order fill sync - runs after market open to capture fills
+    "sync-moo-fills-open": {
+        "task": "stocker.tasks.order_sync.sync_moo_fills",
+        "schedule": crontab(
+            hour=9,
+            minute=35,
+            day_of_week="mon-fri",
+        ),
+    },
+    "sync-moo-fills-followup": {
+        "task": "stocker.tasks.order_sync.sync_moo_fills",
+        "schedule": crontab(
+            hour=10,
+            minute=0,
+            day_of_week="mon-fri",
+        ),
+    },
 }

@@ -132,6 +132,17 @@ result = ingest_market_data()
 print(f'✓ Market data ingestion completed: {result}')
 "
 
+# Sync any pending MOO order fills
+echo -e "\n${YELLOW}📋 Syncing pending MOO order fills...${NC}"
+poetry run python -c "
+from stocker.tasks.order_sync import sync_moo_fills
+
+# Sync fills for any MOO orders submitted previously
+# This catches fills for orders that executed at market open
+result = sync_moo_fills()
+print(f'✓ MOO order sync completed: {result[\"synced\"]} filled, {result[\"failed\"]} failed, {result[\"pending\"]} pending')
+"
+
 echo -e "\n${GREEN}✅ Pipeline is running!${NC}"
 echo "================================"
 echo "Logs are in: logs/"

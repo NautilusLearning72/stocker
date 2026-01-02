@@ -769,16 +769,26 @@
                     <li><strong>Signal Generation</strong> - Compute momentum and volatility</li>
                     <li><strong>Portfolio Optimization</strong> - Calculate target exposures with caps</li>
                     <li><strong>Order Generation</strong> - Diff current vs target positions</li>
-                    <li><strong>Next Day Execution</strong> - Market-on-Open or TWAP (9:35-10:30)</li>
+                    <li><strong>Order Submission</strong> - Submit MOO orders to Alpaca (queued for next open)</li>
                 </ol>
 
                 <h4>Execution Policy</h4>
                 <ul>
-                    <li><strong>Order Type:</strong> Market-on-Open (MOO) by default</li>
-                    <li><strong>Alternative:</strong> TWAP over 60 minutes after open</li>
+                    <li><strong>Default Mode (<code>ORDER_EXECUTION_TYPE=moo</code>):</strong> Market-on-Open orders using Alpaca's <code>OPG</code> time-in-force. Orders submitted after close are queued and execute at 9:30 AM ET next trading day.</li>
+                    <li><strong>Alternative (<code>ORDER_EXECUTION_TYPE=market</code>):</strong> Immediate market orders with <code>DAY</code> time-in-force. Only executes when market is open; orders submitted after close are marked PENDING.</li>
                     <li><strong>Minimum Notional:</strong> $50 per order (avoid churn)</li>
                     <li><strong>Idempotency:</strong> Orders have unique keys to prevent duplicates</li>
                 </ul>
+
+                <h4>MOO Execution Timeline</h4>
+                <div class="limit-card">
+                    <strong>T+0 (After Close)</strong>
+                    <p>5:15 PM ET: Pipeline runs, generates signals, submits MOO orders to Alpaca.</p>
+                </div>
+                <div class="limit-card">
+                    <strong>T+1 (Market Open)</strong>
+                    <p>9:30 AM ET: Alpaca executes queued MOO orders at opening auction price.</p>
+                </div>
             </div>
         </mat-expansion-panel>
     </mat-accordion>

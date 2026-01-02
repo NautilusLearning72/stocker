@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import insert
 # We might need Alpaca Client here if execution is real
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.trading.enums import OrderSide, TimeInForce, OrderStatus
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestTradeRequest
 from alpaca.common.exceptions import APIError
@@ -38,6 +38,7 @@ class BrokerConsumer(BaseStreamConsumer):
             consumer_group="brokers"
         )
         self.mode = settings.BROKER_MODE # 'paper' or 'live'
+        self.execution_type = settings.ORDER_EXECUTION_TYPE  # 'moo' or 'market'
         
         # Initialize Alpaca Trading Client
         self.trading_client = TradingClient(
@@ -210,26 +211,36 @@ class BrokerConsumer(BaseStreamConsumer):
                         logger.debug(f"Updated Order {order_internal_id} qty to {adjusted_qty}")
                 qty = adjusted_qty
 
-        # 3. Check if market is open
+        # 3. Determine TimeInForce based on execution type and market hours
         market_open, market_status = self._is_market_open()
-        if not market_open:
-            logger.warning(f"Skipping order {order_internal_id} for {symbol}: {market_status}")
-            # Emit market closed metric
-            metrics.emit(
-                metrics.CATEGORY_ORDER,
-                "market_closed",
-                qty,
-                symbol=symbol,
-                metadata={"status": market_status, "side": side}
-            )
-            async with AsyncSessionLocal() as session:
-                stmt = select(Order).where(Order.order_id == order_uuid)
-                res = await session.execute(stmt)
-                o = res.scalar_one_or_none()
-                if o:
-                    o.status = "PENDING"  # Keep as pending to retry when market opens
-                    await session.commit()
-            return
+        
+        if self.execution_type == "moo":
+            # Market-on-Open: always use OPG (executes at next market open)
+            time_in_force = TimeInForce.OPG
+            if market_open:
+                logger.info(f"MOO order for {symbol} will execute at next open (market currently open)")
+            else:
+                logger.info(f"MOO order for {symbol} queued for next open. {market_status}")
+        else:
+            # Immediate market order: requires market to be open
+            if not market_open:
+                logger.warning(f"Cannot execute immediate market order for {symbol}: {market_status}")
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "market_closed",
+                    qty,
+                    symbol=symbol,
+                    metadata={"status": market_status, "side": side}
+                )
+                async with AsyncSessionLocal() as session:
+                    stmt = select(Order).where(Order.order_id == order_uuid)
+                    res = await session.execute(stmt)
+                    o = res.scalar_one_or_none()
+                    if o:
+                        o.status = "PENDING"  # Will need manual retry or scheduled task
+                        await session.commit()
+                return
+            time_in_force = TimeInForce.DAY
             
         # 4. Execute with Broker
         broker_order_id = None
@@ -237,17 +248,18 @@ class BrokerConsumer(BaseStreamConsumer):
         filled_qty = 0
         
         try:
-            # We assume Market Order for simplicity
+            # Submit order with appropriate TimeInForce
             req = MarketOrderRequest(
                 symbol=symbol,
                 qty=qty,
                 side=OrderSide.BUY if side == "BUY" else OrderSide.SELL,
-                time_in_force=TimeInForce.DAY
+                time_in_force=time_in_force
             )
 
             submitted_order = self.trading_client.submit_order(req)
             broker_order_id = str(submitted_order.id)
-            logger.info(f"Submitted order {order_internal_id} to Alpaca: {broker_order_id}")
+            order_type_desc = "MOO" if time_in_force == TimeInForce.OPG else "MARKET"
+            logger.info(f"Submitted {order_type_desc} order {order_internal_id} to Alpaca: {broker_order_id}")
 
             # Immediately persist broker_order_id to Order
             async with AsyncSessionLocal() as session:
@@ -257,11 +269,42 @@ class BrokerConsumer(BaseStreamConsumer):
                 if o:
                     o.broker_order_id = broker_order_id
                     o.status = "SUBMITTED"
+                    o.type = "MOO" if time_in_force == TimeInForce.OPG else "MARKET"
                     await session.commit()
                     logger.debug(f"Order {order_internal_id} submitted to broker: {broker_order_id}")
 
-            # 5. Poll for actual fill from Alpaca
-            # Market orders typically fill immediately, but we should verify
+            # 5. Handle fill based on order type
+            if time_in_force == TimeInForce.OPG:
+                # MOO orders won't fill until market open - don't wait
+                # A separate process (or webhook) will handle fill updates
+                logger.info(
+                    f"MOO order {broker_order_id} queued for next open. "
+                    f"Fill will be processed when market opens."
+                )
+                # Mark as ACCEPTED (queued) rather than waiting for fill
+                async with AsyncSessionLocal() as session:
+                    stmt = select(Order).where(Order.order_id == order_uuid)
+                    res = await session.execute(stmt)
+                    o = res.scalar_one_or_none()
+                    if o:
+                        o.status = "ACCEPTED"  # Queued for next open
+                        await session.commit()
+                
+                # Emit metric for visibility
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "moo_queued",
+                    qty,
+                    symbol=symbol,
+                    metadata={
+                        "broker_order_id": broker_order_id,
+                        "side": side,
+                        "execution_type": "moo"
+                    }
+                )
+                return  # Don't wait for fill - will be handled by fill sync task
+            
+            # For immediate market orders, poll for fill
             execution_price, filled_qty = await self._wait_for_fill(
                 broker_order_id, symbol, qty
             )

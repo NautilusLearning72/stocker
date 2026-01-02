@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     SLIPPAGE_BPS: float = 5.0
     COMMISSION_PER_TRADE: float = 1.0
     ALLOW_SHORT_SELLING: bool = True
+    ORDER_EXECUTION_TYPE: Literal["moo", "market"] = "moo"  # moo=Market-on-Open, market=immediate
 
     # Fractional Sizing Settings
     FRACTIONAL_SIZING_ENABLED: bool = True
