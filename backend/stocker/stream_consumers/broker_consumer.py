@@ -72,39 +72,39 @@ class BrokerConsumer(BaseStreamConsumer):
 
     def _validate_sell_order(self, symbol: str, qty: float) -> tuple[bool, float, str]:
         """
-        Validate sell order against actual Alpaca position.
+        Validate sell order against Alpaca position.
         
-        For fractional orders, Alpaca doesn't allow short selling.
-        This checks the actual broker position and adjusts quantity if needed.
+        Alpaca doesn't allow fractional short selling, but integer shorts are OK.
         
         Returns:
             (is_valid, adjusted_qty, reason)
         """
         actual_position = self._get_alpaca_position(symbol)
         
-        if actual_position <= 0:
-            return False, 0.0, f"No position to sell (Alpaca position: {actual_position})"
+        # Would this order result in a short position?
+        resulting_position = actual_position - qty
         
-        if qty > actual_position:
-            # Cap to actual position to avoid short selling
-            if self.fractional_enabled:
-                # Fractional orders cannot short sell at all
-                logger.warning(
-                    f"Capping {symbol} sell from {qty:.4f} to {actual_position:.4f} "
-                    f"(fractional short selling not allowed)"
-                )
-                return True, actual_position, "capped_to_position"
-            else:
-                # Integer orders: round down to available
-                capped_qty = float(int(actual_position))
-                if capped_qty <= 0:
-                    return False, 0.0, f"Position too small for integer sell ({actual_position})"
-                logger.warning(
-                    f"Capping {symbol} sell from {qty:.0f} to {capped_qty:.0f}"
-                )
-                return True, capped_qty, "capped_to_position"
+        if resulting_position >= 0:
+            # Staying long or flat — no restrictions
+            return True, qty, "ok"
         
-        return True, qty, "ok"
+        # This would create/increase a short position
+        if self.fractional_enabled:
+            # Fractional mode: can't short at all, cap to flatten only
+            if actual_position <= 0:
+                return False, 0.0, "Cannot short with fractional orders"
+            # Cap to close position only (no shorting)
+            logger.warning(
+                f"Capping {symbol} sell from {qty:.4f} to {actual_position:.4f} "
+                f"(fractional short selling not allowed)"
+            )
+            return True, actual_position, "capped_to_flatten"
+        else:
+            # Integer mode: short selling allowed, just round to integer
+            int_qty = int(qty)
+            if int_qty <= 0:
+                return False, 0.0, "Quantity too small for integer order"
+            return True, float(int_qty), "ok"
 
     def _is_market_open(self) -> tuple[bool, str]:
         """
@@ -143,7 +143,7 @@ class BrokerConsumer(BaseStreamConsumer):
             logger.error(f"Invalid order id: {order_internal_id}")
             return
         
-        # 1. Update Order Status to PENDING
+        # 1. Load Order and check kill switch before execution
         async with AsyncSessionLocal() as session:
             stmt = select(Order).where(Order.order_id == order_uuid)
             result = await session.execute(stmt)
@@ -151,6 +151,25 @@ class BrokerConsumer(BaseStreamConsumer):
             
             if not order_record:
                 logger.error(f"Order {order_internal_id} not found in DB")
+                return
+            
+            portfolio_id = str(order_record.portfolio_id)
+            
+            # Check kill switch before submitting to broker
+            if await self.is_kill_switch_active(portfolio_id):
+                logger.warning(
+                    f"Kill switch active - rejecting order "
+                    f"{order_internal_id} for {symbol}"
+                )
+                order_record.status = "REJECTED"
+                await session.commit()
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "rejected",
+                    qty,
+                    symbol=symbol,
+                    metadata={"reason": "kill_switch_active", "side": side}
+                )
                 return
                 
             if order_record.status != "NEW":

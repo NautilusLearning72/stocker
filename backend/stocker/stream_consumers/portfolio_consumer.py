@@ -2,6 +2,8 @@ import asyncio
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import date, datetime, timedelta, timezone
+
+import pandas as pd
 from sqlalchemy import func
 from sqlalchemy.future import select
 
@@ -19,6 +21,7 @@ from stocker.models.daily_bar import DailyBar
 from stocker.strategy.portfolio_optimizer import PortfolioOptimizer, RiskConfig, TargetExposure, Signal
 from stocker.strategy.diversification import InstrumentMeta
 from stocker.models.portfolio_state import PortfolioState
+from stocker.models.holding import Holding
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +172,123 @@ class PortfolioConsumer(BaseStreamConsumer):
         logger.info("No VIX data available for enhancement")
         return None
 
+    async def _fetch_historical_returns(
+        self, session, symbols: List[str], target_date: date, lookback: int = 60
+    ) -> Optional[pd.DataFrame]:
+        """
+        Fetch historical returns for correlation calculation.
+        
+        Args:
+            session: Database session
+            symbols: List of symbols to fetch
+            target_date: End date for returns
+            lookback: Number of trading days to fetch
+            
+        Returns:
+            DataFrame with symbols as columns, dates as index, daily returns as values
+        """
+        if not symbols:
+            return None
+            
+        # Fetch ~lookback trading days of data (buffer for weekends/holidays)
+        start_date = target_date - timedelta(days=int(lookback * 1.5))
+        
+        stmt = select(
+            DailyBar.symbol,
+            DailyBar.date,
+            DailyBar.adj_close
+        ).where(
+            DailyBar.symbol.in_(symbols),
+            DailyBar.date >= start_date,
+            DailyBar.date <= target_date
+        ).order_by(DailyBar.date)
+        
+        result = await session.execute(stmt)
+        rows = result.all()
+        
+        if not rows:
+            logger.info("No historical price data for correlation")
+            return None
+        
+        # Build DataFrame: pivot to get symbols as columns
+        data = {"date": [], "symbol": [], "adj_close": []}
+        for row in rows:
+            data["date"].append(row.date)
+            data["symbol"].append(row.symbol)
+            data["adj_close"].append(float(row.adj_close))
+        
+        df = pd.DataFrame(data)
+        prices = df.pivot(index="date", columns="symbol", values="adj_close")
+        
+        # Calculate daily returns
+        returns = prices.pct_change().dropna()
+        
+        if returns.empty or len(returns) < 20:
+            logger.info(
+                f"Insufficient return data for correlation "
+                f"({len(returns)} days, need 20+)"
+            )
+            return None
+        
+        logger.info(
+            f"Fetched {len(returns)} days of returns for "
+            f"{len(returns.columns)} symbols"
+        )
+        return returns
+
+    async def _fetch_current_positions(
+        self, session, portfolio_id: str, target_date: date
+    ) -> Dict[str, float]:
+        """
+        Fetch current position weights for correlation throttling.
+        
+        Args:
+            session: Database session
+            portfolio_id: Portfolio identifier
+            target_date: Date to get positions for
+            
+        Returns:
+            Dict mapping symbol to position weight (as fraction of NAV)
+        """
+        positions: Dict[str, float] = {}
+        
+        # Get latest holdings on or before target_date
+        stmt = select(func.max(Holding.date)).where(
+            Holding.portfolio_id == portfolio_id,
+            Holding.date <= target_date
+        )
+        result = await session.execute(stmt)
+        latest_date = result.scalar_one_or_none()
+        
+        if not latest_date:
+            logger.info("No existing holdings for correlation throttle")
+            return positions
+        
+        stmt = select(Holding).where(
+            Holding.portfolio_id == portfolio_id,
+            Holding.date == latest_date
+        )
+        result = await session.execute(stmt)
+        holdings = result.scalars().all()
+        
+        if not holdings:
+            return positions
+        
+        # Calculate total portfolio value
+        total_value = sum(float(h.market_value) for h in holdings)
+        if total_value <= 0:
+            return positions
+        
+        # Convert to weights
+        for h in holdings:
+            weight = float(h.market_value) / total_value
+            positions[h.symbol] = weight
+        
+        logger.info(
+            f"Fetched {len(positions)} current positions for correlation"
+        )
+        return positions
+
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
         # data: {event_type, strategy, symbol, date, target_weight, ...}
         event_type = data.get("event_type", "signal_generated")
@@ -249,6 +369,22 @@ class PortfolioConsumer(BaseStreamConsumer):
                 market_breadth = await self._fetch_market_breadth(session, effective_date)
                 vix_level = await self._fetch_vix_level(session, effective_date)
 
+            # 4b. Fetch correlation data if enabled
+            historical_returns: Optional[pd.DataFrame] = None
+            current_positions: Dict[str, float] = {}
+            
+            if settings.CORRELATION_THROTTLE_ENABLED and signal_models:
+                symbols = [s.symbol for s in signal_models]
+                portfolio_id = "default"  # TODO: support multiple portfolios
+                
+                historical_returns = await self._fetch_historical_returns(
+                    session, symbols, effective_date,
+                    lookback=settings.CORRELATION_LOOKBACK
+                )
+                current_positions = await self._fetch_current_positions(
+                    session, portfolio_id, effective_date
+                )
+
         if not signal_models:
             logger.warning(f"No signals found on or before {target_date}")
             return
@@ -270,6 +406,8 @@ class PortfolioConsumer(BaseStreamConsumer):
             signals=signals_obj,
             current_drawdown=current_drawdown,
             instrument_metadata=instrument_metadata if instrument_metadata else None,
+            returns=historical_returns,
+            current_positions=current_positions if current_positions else None,
             sentiment_data=sentiment_data if sentiment_data else None,
             instrument_metrics=instrument_metrics if instrument_metrics else None,
             market_breadth=market_breadth,

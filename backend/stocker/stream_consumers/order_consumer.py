@@ -84,6 +84,12 @@ class OrderConsumer(BaseStreamConsumer):
         
         if not all([portfolio_id, symbol, target_exposure_str, date_str]):
             return
+        
+        # Check kill switch before generating any orders
+        if await self.is_kill_switch_active(portfolio_id):
+            logger.warning(f"Kill switch active - skipping order generation for {symbol}")
+            metrics.order_skipped(symbol, "kill_switch_active", 0)
+            return
             
         target_exposure = float(target_exposure_str)
         target_date = date.fromisoformat(date_str)

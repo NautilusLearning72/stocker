@@ -153,6 +153,29 @@ class BaseStreamConsumer(ABC):
         """Process a single message. Must be implemented by subclass."""
         pass
 
+    async def is_kill_switch_active(self, portfolio_id: str) -> bool:
+        """Check if kill switch is active for this portfolio.
+        
+        Returns True if trading should be halted.
+        """
+        if not self.redis:
+            return False
+            
+        try:
+            kill_switch_data = await self.redis.get(f"kill_switch:{portfolio_id}")
+            if kill_switch_data:
+                data = json.loads(kill_switch_data)
+                if data.get("active", False):
+                    logger.warning(
+                        f"Kill switch active for {portfolio_id}: {data.get('reason', 'unknown')}"
+                    )
+                    return True
+        except Exception as e:
+            logger.error(f"Error checking kill switch: {e}")
+            # On error, be conservative and don't block trading
+            
+        return False
+
     async def stop(self) -> None:
         """Gracefully stop the consumer."""
         self._running = False
