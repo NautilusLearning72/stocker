@@ -91,6 +91,19 @@ class Settings(BaseSettings):
     CORRELATION_LOOKBACK: int = 60  # 60-day rolling correlation
     CORRELATION_SCALE_FACTOR: float = 0.50  # Scale new adds by 50% when corr high
 
+    # Signal Enhancement Settings
+    ENHANCEMENT_ENABLED: bool = False  # Enable signal enhancement
+    CONVICTION_ENABLED: bool = True  # Scale by trend conviction
+    SENTIMENT_ENABLED: bool = True  # Use market sentiment
+    REGIME_ENABLED: bool = True  # Adjust for market regime
+    QUALITY_ENABLED: bool = True  # Factor in instrument quality
+    MIN_LOOKBACK_RETURN: float = 0.02  # 2% minimum for full conviction
+    CONVICTION_SCALE_MIN: float = 0.3  # Minimum scaling for weak signals
+    SENTIMENT_WEIGHT: float = 0.2  # How much sentiment affects signal
+    SENTIMENT_CONTRARIAN: bool = False  # Fade extreme sentiment
+    REGIME_DEFENSIVE_SCALE: float = 0.5  # Scale down in risk-off
+    BREADTH_THRESHOLD: float = 0.4  # Below this = risk-off
+
     # Exit Rule Settings
     EXIT_RULES_ENABLED: bool = False
     TRAILING_STOP_ATR_MULTIPLE: float = 3.0  # Exit if retraces 3 ATRs from peak

@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from typing import Dict, Any, List
-from datetime import date, datetime, timezone
+from typing import Dict, Any, List, Optional
+from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func
 from sqlalchemy.future import select
 
@@ -12,6 +12,10 @@ from stocker.core.redis import StreamNames
 from stocker.models.signal import Signal as SignalModel
 from stocker.models.target_exposure import TargetExposure as TargetModel
 from stocker.models.instrument_info import InstrumentInfo
+from stocker.models.market_sentiment import MarketSentiment
+from stocker.models.instrument_metrics import InstrumentMetrics
+from stocker.models.market_breadth import MarketBreadth
+from stocker.models.daily_bar import DailyBar
 from stocker.strategy.portfolio_optimizer import PortfolioOptimizer, RiskConfig, TargetExposure, Signal
 from stocker.strategy.diversification import InstrumentMeta
 from stocker.models.portfolio_state import PortfolioState
@@ -44,8 +48,126 @@ class PortfolioConsumer(BaseStreamConsumer):
             correlation_throttle_enabled=settings.CORRELATION_THROTTLE_ENABLED,
             correlation_threshold=settings.CORRELATION_THRESHOLD,
             correlation_lookback=settings.CORRELATION_LOOKBACK,
-            correlation_scale_factor=settings.CORRELATION_SCALE_FACTOR
+            correlation_scale_factor=settings.CORRELATION_SCALE_FACTOR,
+            # Signal enhancement settings
+            enhancement_enabled=settings.ENHANCEMENT_ENABLED,
+            conviction_enabled=settings.CONVICTION_ENABLED,
+            sentiment_enabled=settings.SENTIMENT_ENABLED,
+            regime_enabled=settings.REGIME_ENABLED,
+            quality_enabled=settings.QUALITY_ENABLED
         ))
+
+    async def _fetch_sentiment_data(
+        self, session, symbols: List[str], target_date: date
+    ) -> Dict[str, float]:
+        """Fetch latest sentiment scores for symbols."""
+        sentiment_data: Dict[str, float] = {}
+        
+        # Get most recent sentiment for each symbol on or before target_date
+        stmt = select(MarketSentiment).where(
+            MarketSentiment.symbol.in_(symbols),
+            MarketSentiment.date <= target_date
+        ).order_by(MarketSentiment.date.desc())
+        result = await session.execute(stmt)
+        
+        seen_symbols = set()
+        for row in result.scalars().all():
+            if row.symbol not in seen_symbols:
+                sentiment_data[row.symbol] = float(row.sentiment_score)
+                seen_symbols.add(row.symbol)
+        
+        if sentiment_data:
+            logger.info(f"Fetched sentiment for {len(sentiment_data)} symbols")
+        else:
+            logger.info("No sentiment data available for enhancement")
+        
+        return sentiment_data
+
+    async def _fetch_instrument_metrics(
+        self, session, symbols: List[str], target_date: date
+    ) -> Dict[str, dict]:
+        """Fetch latest instrument metrics (market_cap, beta, volume)."""
+        metrics_data: Dict[str, dict] = {}
+        
+        # Get most recent metrics for each symbol
+        stmt = select(InstrumentMetrics).where(
+            InstrumentMetrics.symbol.in_(symbols),
+            InstrumentMetrics.as_of_date <= target_date
+        ).order_by(InstrumentMetrics.as_of_date.desc())
+        result = await session.execute(stmt)
+        
+        seen_symbols = set()
+        for row in result.scalars().all():
+            if row.symbol not in seen_symbols:
+                metrics_data[row.symbol] = {
+                    "market_cap": float(row.market_cap) if row.market_cap else None,
+                    "beta": float(row.beta) if row.beta else None,
+                }
+                seen_symbols.add(row.symbol)
+        
+        # Fetch average volume from daily bars (last 20 days)
+        lookback_start = target_date - timedelta(days=30)
+        stmt = select(
+            DailyBar.symbol,
+            func.avg(DailyBar.volume).label("avg_volume")
+        ).where(
+            DailyBar.symbol.in_(symbols),
+            DailyBar.date >= lookback_start,
+            DailyBar.date <= target_date
+        ).group_by(DailyBar.symbol)
+        result = await session.execute(stmt)
+        
+        for row in result.all():
+            if row.symbol in metrics_data:
+                metrics_data[row.symbol]["avg_volume"] = float(row.avg_volume) if row.avg_volume else None
+            else:
+                metrics_data[row.symbol] = {"avg_volume": float(row.avg_volume) if row.avg_volume else None}
+        
+        if metrics_data:
+            logger.info(f"Fetched instrument metrics for {len(metrics_data)} symbols")
+        else:
+            logger.info("No instrument metrics available for enhancement")
+        
+        return metrics_data
+
+    async def _fetch_market_breadth(
+        self, session, target_date: date
+    ) -> Optional[float]:
+        """Fetch market breadth (% stocks above 200-day MA)."""
+        stmt = select(MarketBreadth).where(
+            MarketBreadth.date <= target_date,
+            MarketBreadth.metric == "pct_above_200d_ma"
+        ).order_by(MarketBreadth.date.desc()).limit(1)
+        result = await session.execute(stmt)
+        row = result.scalar_one_or_none()
+        
+        if row:
+            breadth = float(row.value)
+            logger.info(f"Market breadth: {breadth:.1%}")
+            return breadth
+        
+        logger.info("No market breadth data available for enhancement")
+        return None
+
+    async def _fetch_vix_level(
+        self, session, target_date: date
+    ) -> Optional[float]:
+        """Fetch VIX level from daily bars."""
+        # VIX is typically stored as ^VIX or VIX
+        stmt = select(DailyBar).where(
+            DailyBar.symbol.in_(["^VIX", "VIX", "$VIX"]),
+            DailyBar.date <= target_date
+        ).order_by(DailyBar.date.desc()).limit(1)
+        result = await session.execute(stmt)
+        row = result.scalar_one_or_none()
+        
+        if row:
+            vix = float(row.adj_close)
+            logger.info(f"VIX level: {vix:.2f}")
+            return vix
+        
+        logger.info("No VIX data available for enhancement")
+        return None
 
     async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
         # data: {event_type, strategy, symbol, date, target_weight, ...}
@@ -112,6 +234,21 @@ class PortfolioConsumer(BaseStreamConsumer):
                         asset_class=info.asset_class or "US_EQUITY"
                     )
 
+            # 4. Fetch enhancement data if enabled
+            sentiment_data: Dict[str, float] = {}
+            instrument_metrics: Dict[str, dict] = {}
+            market_breadth: Optional[float] = None
+            vix_level: Optional[float] = None
+            
+            if settings.ENHANCEMENT_ENABLED and signal_models:
+                symbols = [s.symbol for s in signal_models]
+                logger.info(f"Fetching enhancement data for {len(symbols)} symbols")
+                
+                sentiment_data = await self._fetch_sentiment_data(session, symbols, effective_date)
+                instrument_metrics = await self._fetch_instrument_metrics(session, symbols, effective_date)
+                market_breadth = await self._fetch_market_breadth(session, effective_date)
+                vix_level = await self._fetch_vix_level(session, effective_date)
+
         if not signal_models:
             logger.warning(f"No signals found on or before {target_date}")
             return
@@ -128,11 +265,15 @@ class PortfolioConsumer(BaseStreamConsumer):
                 strategy_version=s.strategy_version
             ))
             
-        # 4. Optimize (with diversification if enabled)
+        # 5. Optimize (with diversification and enhancement if enabled)
         targets = self.optimizer.compute_targets(
             signals=signals_obj,
             current_drawdown=current_drawdown,
-            instrument_metadata=instrument_metadata if instrument_metadata else None
+            instrument_metadata=instrument_metadata if instrument_metadata else None,
+            sentiment_data=sentiment_data if sentiment_data else None,
+            instrument_metrics=instrument_metrics if instrument_metrics else None,
+            market_breadth=market_breadth,
+            vix_level=vix_level
         )
         
         def targets_match(existing: TargetModel, target: TargetExposure) -> bool:

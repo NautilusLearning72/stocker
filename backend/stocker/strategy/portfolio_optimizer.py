@@ -9,6 +9,12 @@ from stocker.strategy.diversification import (
     DiversificationConfig,
     InstrumentMeta
 )
+from stocker.strategy.signal_enhancer import (
+    SignalEnhancer,
+    EnhancementConfig,
+    SignalMetadata,
+    enhance_signals
+)
 from stocker.core.metrics import metrics
 
 
@@ -27,6 +33,12 @@ class RiskConfig:
     correlation_threshold: float = 0.70
     correlation_lookback: int = 60
     correlation_scale_factor: float = 0.50
+    # Signal enhancement settings
+    enhancement_enabled: bool = False
+    conviction_enabled: bool = True
+    sentiment_enabled: bool = True
+    regime_enabled: bool = True
+    quality_enabled: bool = True
 
 @dataclass
 class TargetExposure:
@@ -53,6 +65,14 @@ class PortfolioOptimizer:
             correlation_lookback=config.correlation_lookback,
             correlation_scale_factor=config.correlation_scale_factor
         ))
+        # Initialize signal enhancer
+        self.enhancer = SignalEnhancer(EnhancementConfig(
+            enabled=config.enhancement_enabled,
+            conviction_enabled=config.conviction_enabled,
+            sentiment_enabled=config.sentiment_enabled,
+            regime_enabled=config.regime_enabled,
+            quality_enabled=config.quality_enabled
+        ))
 
     def compute_targets(
         self,
@@ -60,7 +80,11 @@ class PortfolioOptimizer:
         current_drawdown: float = 0.0,
         instrument_metadata: Optional[Dict[str, InstrumentMeta]] = None,
         returns: Optional[pd.DataFrame] = None,
-        current_positions: Optional[Dict[str, float]] = None
+        current_positions: Optional[Dict[str, float]] = None,
+        sentiment_data: Optional[Dict[str, float]] = None,
+        instrument_metrics: Optional[Dict[str, dict]] = None,
+        market_breadth: Optional[float] = None,
+        vix_level: Optional[float] = None
     ) -> List[TargetExposure]:
         """
         Compute final target weights for a list of signals.
@@ -71,12 +95,37 @@ class PortfolioOptimizer:
             instrument_metadata: Optional symbol -> InstrumentMeta mapping
             returns: Optional historical returns for correlation
             current_positions: Optional current position weights
+            sentiment_data: Optional symbol -> sentiment score mapping
+            instrument_metrics: Optional symbol -> metrics (market_cap, beta, etc.)
+            market_breadth: Optional current market breadth (% advancing)
+            vix_level: Optional current VIX level
 
         Returns:
             List of TargetExposure objects with final weights
         """
         targets = []
-        raw_exposures = {s.symbol: s.raw_weight for s in signals}
+        
+        # 0. Apply signal enhancement (conviction, sentiment, regime, quality)
+        enhanced_weights = {}
+        if self.config.enhancement_enabled:
+            enhancements = enhance_signals(
+                signals=signals,
+                enhancer=self.enhancer,
+                sentiment_data=sentiment_data,
+                metrics_data=instrument_metrics,
+                market_breadth=market_breadth,
+                vix_level=vix_level
+            )
+            enhanced_weights = {
+                sym: result.enhanced_weight
+                for sym, result in enhancements.items()
+            }
+        
+        # Use enhanced weights if available, otherwise raw
+        raw_exposures = {
+            s.symbol: enhanced_weights.get(s.symbol, s.raw_weight)
+            for s in signals
+        }
 
         # 1. Apply Drawdown Scaling
         scale_factor = 1.0

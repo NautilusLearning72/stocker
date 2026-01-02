@@ -63,6 +63,20 @@ export class StrategyGuide {
     { parameter: 'CORRELATION_THROTTLE_ENABLED', default: 'false', description: 'Throttle correlated position adds', category: 'Diversification' },
     { parameter: 'CORRELATION_THRESHOLD', default: '0.70', description: 'Correlation level to trigger throttle', category: 'Diversification' },
     { parameter: 'CORRELATION_SCALE_FACTOR', default: '0.50', description: 'Scale factor when throttled', category: 'Diversification' },
+    { parameter: 'CORRELATION_LOOKBACK', default: '60', description: 'Days to measure correlation', category: 'Diversification' },
+
+    // Enhancement
+    { parameter: 'ENHANCEMENT_ENABLED', default: 'false', description: 'Master toggle for signal enhancement', category: 'Enhancement' },
+    { parameter: 'CONVICTION_ENABLED', default: 'true', description: 'Scale by trend strength', category: 'Enhancement' },
+    { parameter: 'MIN_LOOKBACK_RETURN', default: '0.02', description: 'Return threshold for full conviction', category: 'Enhancement' },
+    { parameter: 'CONVICTION_SCALE_MIN', default: '0.50', description: 'Minimum conviction multiplier', category: 'Enhancement' },
+    { parameter: 'SENTIMENT_ENABLED', default: 'true', description: 'Adjust by market sentiment', category: 'Enhancement' },
+    { parameter: 'SENTIMENT_WEIGHT', default: '0.30', description: 'Sentiment influence (0-1)', category: 'Enhancement' },
+    { parameter: 'SENTIMENT_CONTRARIAN', default: 'true', description: 'Fade extreme sentiment', category: 'Enhancement' },
+    { parameter: 'REGIME_ENABLED', default: 'true', description: 'Reduce in stressed regimes', category: 'Enhancement' },
+    { parameter: 'REGIME_DEFENSIVE_SCALE', default: '0.60', description: 'Multiplier in defensive mode', category: 'Enhancement' },
+    { parameter: 'BREADTH_THRESHOLD', default: '0.40', description: 'Breadth level triggering defense', category: 'Enhancement' },
+    { parameter: 'QUALITY_ENABLED', default: 'true', description: 'Tilt toward quality instruments', category: 'Enhancement' },
 
     // Order Sizing
     { parameter: 'FRACTIONAL_SIZING_ENABLED', default: 'true', description: 'Allow fractional share orders', category: 'Sizing' },

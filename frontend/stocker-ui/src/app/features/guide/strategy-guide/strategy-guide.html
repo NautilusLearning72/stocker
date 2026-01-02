@@ -525,6 +525,91 @@
             </div>
         </mat-expansion-panel>
 
+        <!-- Signal Enhancement -->
+        <mat-expansion-panel>
+            <mat-expansion-panel-header>
+                <mat-panel-title>
+                    <mat-icon>auto_fix_high</mat-icon>
+                    Signal Enhancement (Optional)
+                </mat-panel-title>
+            </mat-expansion-panel-header>
+
+            <div class="section-content">
+                <p>
+                    Signal enhancement adjusts raw trend signals using market context data to improve
+                    risk-adjusted returns. Each factor can be independently enabled.
+                </p>
+
+                <div class="limit-card">
+                    <strong>Status: Disabled by Default</strong>
+                    <p>Set <code>ENHANCEMENT_ENABLED=true</code> to activate.</p>
+                    <p><em>Note: Missing data is handled gracefully—factors default to 1.0 multiplier when data is unavailable.</em></p>
+                </div>
+
+                <h4>1. Conviction Factor</h4>
+                <p>Scales positions based on trend strength:</p>
+                <div class="formula-card">
+                    <code>conviction = scale_min + (1 - scale_min) × min(1, |lookback_return| / min_return)</code>
+                </div>
+                <ul>
+                    <li><strong>Strong trends</strong> (return > 2%): Full position size</li>
+                    <li><strong>Weak trends</strong> (return < 2%): Scaled down to 50-100%</li>
+                    <li><strong>Effect:</strong> Concentrates capital in higher-conviction signals</li>
+                </ul>
+
+                <h4>2. Sentiment Factor</h4>
+                <p>Adjusts based on market sentiment data (when available):</p>
+                <div class="formula-card">
+                    <code>adjustment = 1.0 ± (sentiment_weight × normalized_sentiment)</code>
+                </div>
+                <ul>
+                    <li><strong>Contrarian mode</strong> (default): Reduces longs when sentiment extremely bullish</li>
+                    <li><strong>Momentum mode:</strong> Aligns position size with sentiment direction</li>
+                    <li><strong>Max impact:</strong> ±30% position adjustment</li>
+                </ul>
+
+                <h4>3. Regime Factor</h4>
+                <p>Reduces exposure during stressed market conditions:</p>
+                <table class="example-table">
+                    <tr>
+                        <th>Indicator</th>
+                        <th>Threshold</th>
+                        <th>Action</th>
+                    </tr>
+                    <tr>
+                        <td>VIX Level</td>
+                        <td>&gt; 25</td>
+                        <td>Scale to 60%</td>
+                    </tr>
+                    <tr>
+                        <td>Market Breadth</td>
+                        <td>&lt; 40%</td>
+                        <td>Scale to 60%</td>
+                    </tr>
+                </table>
+                <p>When either condition is met, positions are reduced to the defensive scale factor.</p>
+
+                <h4>4. Quality Factor</h4>
+                <p>Tilts toward more stable instruments using three metrics:</p>
+                <ul>
+                    <li><strong>Market Cap:</strong> Slight preference for larger companies (log-scaled)</li>
+                    <li><strong>Beta:</strong> Reduces high-beta positions, increases low-beta</li>
+                    <li><strong>Liquidity:</strong> Slight preference for higher average volume</li>
+                </ul>
+                <div class="limit-card">
+                    <strong>Combined Effect</strong>
+                    <p>Quality adjustment typically ranges from 0.85× to 1.15× based on instrument characteristics.</p>
+                </div>
+
+                <h4>Enhancement Pipeline</h4>
+                <p>Factors are applied multiplicatively in sequence:</p>
+                <div class="formula-card">
+                    <code>final_weight = raw_weight × conviction × sentiment × regime × quality</code>
+                </div>
+                <p>Each factor's contribution is logged for observability and debugging.</p>
+            </div>
+        </mat-expansion-panel>
+
         <!-- Order Sizing -->
         <mat-expansion-panel>
             <mat-expansion-panel-header>

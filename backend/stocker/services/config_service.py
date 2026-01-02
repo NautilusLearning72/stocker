@@ -152,6 +152,63 @@ TRADING_PARAMS: Dict[str, Dict[str, Any]] = {
         "tooltip": "When correlation throttle triggers, new position sizes are multiplied by this factor. 0.50 = 50% means you only take half the normal position in highly correlated stocks."
     },
 
+    # Enhancement
+    "ENHANCEMENT_ENABLED": {
+        "value_type": "bool", "category": "enhancement",
+        "description": "Enable signal enhancement factors",
+        "tooltip": "Master toggle for all signal enhancement. When enabled, raw trend signals are adjusted using conviction, sentiment, regime, and quality factors. Each sub-factor can be independently toggled."
+    },
+    "CONVICTION_ENABLED": {
+        "value_type": "bool", "category": "enhancement",
+        "description": "Enable conviction-based scaling",
+        "tooltip": "Scale position sizes based on the strength of the trend signal. Stronger trends (higher absolute returns) get larger positions, weaker trends get smaller positions."
+    },
+    "MIN_LOOKBACK_RETURN": {
+        "value_type": "float", "category": "enhancement", "min": 0.0, "max": 1.0,
+        "description": "Minimum return for full conviction",
+        "tooltip": "The lookback period return threshold below which conviction scaling reduces position size. 0.02 = 2% means trends weaker than 2% get scaled down."
+    },
+    "CONVICTION_SCALE_MIN": {
+        "value_type": "float", "category": "enhancement", "min": 0.0, "max": 1.0,
+        "description": "Minimum conviction multiplier",
+        "tooltip": "The floor for conviction scaling. 0.5 means even weak trends keep at least 50% of their target weight. Prevents complete position elimination."
+    },
+    "SENTIMENT_ENABLED": {
+        "value_type": "bool", "category": "enhancement",
+        "description": "Enable sentiment adjustment",
+        "tooltip": "Adjust position sizes based on market sentiment data. Can operate in momentum mode (align with sentiment) or contrarian mode (fade extreme sentiment)."
+    },
+    "SENTIMENT_WEIGHT": {
+        "value_type": "float", "category": "enhancement", "min": 0.0, "max": 1.0,
+        "description": "Sentiment factor influence",
+        "tooltip": "How much sentiment affects position sizing. 0.3 = 30% means sentiment can adjust positions by up to ±30%. Higher values make the strategy more sentiment-driven."
+    },
+    "SENTIMENT_CONTRARIAN": {
+        "value_type": "bool", "category": "enhancement",
+        "description": "Use contrarian sentiment mode",
+        "tooltip": "When true, reduces positions when sentiment is extremely bullish and increases when extremely bearish (fade the crowd). When false, aligns with sentiment direction."
+    },
+    "REGIME_ENABLED": {
+        "value_type": "bool", "category": "enhancement",
+        "description": "Enable regime-based scaling",
+        "tooltip": "Reduce position sizes during high-volatility or weak-breadth market regimes. Uses VIX levels and market breadth to detect stressed conditions."
+    },
+    "REGIME_DEFENSIVE_SCALE": {
+        "value_type": "float", "category": "enhancement", "min": 0.0, "max": 1.0,
+        "description": "Defensive regime multiplier",
+        "tooltip": "Position size multiplier during defensive regimes (high VIX or poor breadth). 0.6 = 60% means positions are reduced to 60% of target during stress."
+    },
+    "BREADTH_THRESHOLD": {
+        "value_type": "float", "category": "enhancement", "min": 0.0, "max": 1.0,
+        "description": "Weak breadth trigger level",
+        "tooltip": "Market breadth level below which defensive scaling triggers. 0.4 = 40% means if fewer than 40% of stocks are above their 200-day MA, reduce exposure."
+    },
+    "QUALITY_ENABLED": {
+        "value_type": "bool", "category": "enhancement",
+        "description": "Enable quality factor adjustment",
+        "tooltip": "Adjust positions based on instrument quality metrics: market cap (favor larger), beta (favor lower), and liquidity (favor higher volume). Tilts toward more stable instruments."
+    },
+
     # Sizing
     "FRACTIONAL_SIZING_ENABLED": {
         "value_type": "bool", "category": "sizing",
