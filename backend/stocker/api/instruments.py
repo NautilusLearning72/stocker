@@ -254,3 +254,68 @@ async def get_symbol_sentiment(
     )
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+# --- Validation Schemas ---
+
+
+class SymbolValidationRequest(BaseModel):
+    symbols: list[str]
+
+
+class SymbolValidationResponse(BaseModel):
+    valid: list[str]
+    invalid: list[str]
+
+
+@router.post("/validate", response_model=SymbolValidationResponse)
+async def validate_symbols(payload: SymbolValidationRequest):
+    """
+    Validate that symbols exist via yfinance ticker info.
+    
+    This uses yf.Ticker().info which is more reliable than price downloads
+    for validating symbol existence, especially for international tickers
+    that may not have recent price data in the default period.
+    
+    Returns lists of valid and invalid symbols.
+    """
+    import yfinance as yf
+    import logging
+    
+    logger = logging.getLogger(__name__)
+
+    symbols = [s.upper().strip() for s in payload.symbols if s.strip()]
+    if not symbols:
+        return SymbolValidationResponse(valid=[], invalid=[])
+
+    valid_symbols: list[str] = []
+    invalid_symbols: list[str] = []
+
+    for sym in symbols:
+        try:
+            ticker = yf.Ticker(sym)
+            # Use .info which returns company metadata
+            # Valid tickers have meaningful info like 'shortName' or 'symbol'
+            info = ticker.info
+            
+            # Check for indicators that the ticker is valid
+            # Invalid/delisted tickers return empty dict or dict with only 'trailingPegRatio'
+            if info and (
+                info.get('shortName') or 
+                info.get('longName') or 
+                (info.get('symbol') and info.get('symbol') == sym) or
+                info.get('regularMarketPrice') is not None or
+                info.get('previousClose') is not None
+            ):
+                valid_symbols.append(sym)
+                logger.debug(f"Symbol {sym} validated successfully")
+            else:
+                invalid_symbols.append(sym)
+                logger.debug(f"Symbol {sym} appears invalid - no meaningful info returned")
+        except Exception as e:
+            # Any exception means we couldn't validate the symbol
+            logger.debug(f"Symbol {sym} validation failed: {e}")
+            invalid_symbols.append(sym)
+
+    return SymbolValidationResponse(valid=valid_symbols, invalid=invalid_symbols)
+

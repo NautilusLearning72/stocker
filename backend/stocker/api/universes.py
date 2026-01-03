@@ -11,6 +11,7 @@ from stocker.models.instrument_universe import InstrumentUniverse
 from stocker.models.strategy_universe import StrategyUniverse
 from stocker.models.instrument_universe_member import InstrumentUniverseMember
 from stocker.models.instrument_metrics import InstrumentMetrics
+from stocker.models.daily_bar import DailyBar
 from stocker.services.universe_service import UniverseService
 
 router = APIRouter()
@@ -66,6 +67,9 @@ class StrategyUniverseAssign(BaseModel):
 class MetricStatus(BaseModel):
     symbol: str
     as_of_date: Optional[str] = None
+    price_first_date: Optional[str] = None
+    price_last_date: Optional[str] = None
+    bar_count: int = 0
 
 
 # Endpoints
@@ -89,18 +93,36 @@ async def get_metrics_status(
     if not target_symbols:
         return []
 
-    stmt = (
+    # Get metrics as-of dates
+    metrics_stmt = (
         select(InstrumentMetrics.symbol, func.max(InstrumentMetrics.as_of_date))
         .where(InstrumentMetrics.symbol.in_(target_symbols))
         .group_by(InstrumentMetrics.symbol)
     )
-    result = await db.execute(stmt)
-    rows = {row[0]: row[1] for row in result.all()}
+    metrics_result = await db.execute(metrics_stmt)
+    metrics_rows = {row[0]: row[1] for row in metrics_result.all()}
+
+    # Get price coverage (first date, last date, count)
+    price_stmt = (
+        select(
+            DailyBar.symbol,
+            func.min(DailyBar.date),
+            func.max(DailyBar.date),
+            func.count(DailyBar.id),
+        )
+        .where(DailyBar.symbol.in_(target_symbols))
+        .group_by(DailyBar.symbol)
+    )
+    price_result = await db.execute(price_stmt)
+    price_rows = {row[0]: (row[1], row[2], row[3]) for row in price_result.all()}
 
     return [
         MetricStatus(
             symbol=symbol,
-            as_of_date=str(rows.get(symbol)) if rows.get(symbol) else None,
+            as_of_date=str(metrics_rows.get(symbol)) if metrics_rows.get(symbol) else None,
+            price_first_date=str(price_rows.get(symbol, (None,))[0]) if price_rows.get(symbol, (None,))[0] else None,
+            price_last_date=str(price_rows.get(symbol, (None, None))[1]) if price_rows.get(symbol, (None, None))[1] else None,
+            bar_count=price_rows.get(symbol, (None, None, 0))[2] or 0,
         )
         for symbol in target_symbols
     ]

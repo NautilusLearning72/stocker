@@ -521,3 +521,74 @@ async def _publish_kill_switch_update(
             }
         ),
     )
+
+
+# ---------- Backfill Endpoint ----------
+
+
+class BackfillRequest(BaseModel):
+    """Request schema for on-demand price backfill."""
+    symbols: List[str]
+    days: int = 200
+
+
+class DataQualityAlertResponse(BaseModel):
+    """Response schema for data quality alerts."""
+    symbol: str
+    date: str
+    issue_type: str
+    message: str
+    severity: str
+
+
+class BackfillResponse(BaseModel):
+    """Response schema for backfill operation."""
+    symbols_requested: int
+    records_processed: int
+    alerts: List[DataQualityAlertResponse]
+
+
+@router.post("/backfill", response_model=BackfillResponse)
+async def trigger_backfill(payload: BackfillRequest):
+    """
+    Trigger an on-demand price history backfill for specified symbols.
+    
+    This fetches historical daily bars from yfinance and stores them in the database.
+    Default is 200 days of history (required for strategy lookback).
+    """
+    from datetime import date, timedelta
+    from stocker.services.market_data_service import MarketDataService
+
+    symbols = [s.upper().strip() for s in payload.symbols if s.strip()]
+    if not symbols:
+        return BackfillResponse(
+            symbols_requested=0,
+            records_processed=0,
+            alerts=[],
+        )
+
+    end_date = date.today()
+    start_date = end_date - timedelta(days=payload.days)
+
+    service = MarketDataService(provider_name="yfinance")
+    records_processed, alerts = await service.fetch_and_store_daily_bars(
+        symbols=symbols,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    return BackfillResponse(
+        symbols_requested=len(symbols),
+        records_processed=records_processed,
+        alerts=[
+            DataQualityAlertResponse(
+                symbol=a.symbol,
+                date=str(a.date),
+                issue_type=a.issue_type,
+                message=a.message,
+                severity=a.severity,
+            )
+            for a in alerts
+        ],
+    )
+

@@ -23,7 +23,10 @@
               <mat-label>Add symbols (comma/space separated)</mat-label>
               <textarea matInput rows="2" [(ngModel)]="addSymbolsInput"></textarea>
             </mat-form-field>
-            <button mat-raised-button color="primary" (click)="addMembers()">Add</button>
+            <button mat-raised-button color="primary" (click)="addMembers()" [disabled]="!addSymbolsInput.trim() || validating">
+              <mat-spinner *ngIf="validating" diameter="18" class="inline-spinner"></mat-spinner>
+              {{ validating ? 'Validating...' : 'Add' }}
+            </button>
           </div>
 
           <mat-form-field appearance="outline" class="full">
@@ -91,14 +94,38 @@
                 <div class="chip-name">{{ instrumentNames[sym] || '—' }}</div>
               </td>
             </ng-container>
+            <ng-container matColumnDef="bar_count">
+              <th mat-header-cell *matHeaderCellDef>Price Bars</th>
+              <td mat-cell *matCellDef="let sym">
+                <span [class.text-warn]="(metrics[sym]?.bar_count || 0) < 200"
+                      [matTooltip]="metrics[sym]?.price_first_date && metrics[sym]?.price_last_date
+                        ? metrics[sym].price_first_date + ' → ' + metrics[sym].price_last_date
+                        : 'No price data'">
+                  {{ metrics[sym]?.bar_count || 0 }}
+                </span>
+              </td>
+            </ng-container>
             <ng-container matColumnDef="as_of_date">
               <th mat-header-cell *matHeaderCellDef>Metrics As Of</th>
               <td mat-cell *matCellDef="let sym">
                 {{ metrics[sym]?.as_of_date || '—' }}
               </td>
             </ng-container>
-            <tr mat-header-row *matHeaderRowDef="['symbol', 'as_of_date']"></tr>
-            <tr mat-row *matRowDef="let row; columns: ['symbol', 'as_of_date'];"></tr>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let sym">
+                <button mat-icon-button
+                        color="primary"
+                        (click)="triggerSymbolBackfill(sym)"
+                        [disabled]="backfilling"
+                        matTooltip="Backfill price history">
+                  <mat-spinner *ngIf="backfillingSymbol === sym" diameter="18"></mat-spinner>
+                  <mat-icon *ngIf="backfillingSymbol !== sym">refresh</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['symbol', 'bar_count', 'as_of_date', 'actions']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['symbol', 'bar_count', 'as_of_date', 'actions'];"></tr>
           </table>
           <ng-template #noMetrics>
             <div class="status text-sm text-muted">No symbols to show.</div>

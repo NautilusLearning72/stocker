@@ -10,6 +10,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { lastValueFrom } from 'rxjs';
 import {
   MetricStatus,
@@ -18,7 +21,7 @@ import {
   UniverseDetail,
   UniverseService,
 } from '../../../core/services/universe.service';
-import { InstrumentInfo, InstrumentInfoService } from '../../../core/services/instrument-info.service';
+import { InstrumentInfo, InstrumentInfoService, BackfillResult } from '../../../core/services/instrument-info.service';
 import { UniverseNamePipe } from './universe-name.pipe';
 import { SymbolLink } from '../../../shared/components/symbol-link/symbol-link';
 
@@ -37,6 +40,9 @@ import { SymbolLink } from '../../../shared/components/symbol-link/symbol-link';
     MatSelectModule,
     MatTableModule,
     MatTabsModule,
+    MatSnackBarModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
     UniverseNamePipe,
     SymbolLink,
   ],
@@ -63,12 +69,16 @@ export class UniverseManager implements OnInit {
   newUniverseSymbolsInput = '';
 
   loading = false;
+  validating = false;
+  backfilling = false;
+  backfillingSymbol: string | null = null;
   errorMsg = '';
 
   constructor(
     private universeService: UniverseService,
     private infoService: InstrumentInfoService,
     private cdr: ChangeDetectorRef,
+    private snackBar: MatSnackBar,
   ) {}
 
   ngOnInit(): void {
@@ -145,21 +155,106 @@ export class UniverseManager implements OnInit {
     const symbols = this.parseSymbols(this.addSymbolsInput);
     if (!symbols.length) return;
 
-    this.universeService.addMembers(this.selectedUniverseId, symbols).subscribe({
-      next: () => {
-        // Defer state updates to a new tick to avoid NG0100 when clearing input
-        setTimeout(() => {
-          this.addSymbolsInput = '';
-          this.loadUniverseDetail();
-          this.cdr.detectChanges();
+    const isGlobalUniverse = this.universes.find((u) => u.id === this.selectedUniverseId)?.is_global ?? false;
+
+    // Step 1: Validate symbols
+    this.validating = true;
+    this.cdr.detectChanges();
+
+    this.infoService.validateSymbols(symbols).subscribe({
+      next: (result) => {
+        this.validating = false;
+        this.cdr.detectChanges();
+
+        // Notify about invalid symbols
+        if (result.invalid.length > 0) {
+          this.snackBar.open(
+            `Invalid symbols skipped: ${result.invalid.join(', ')}`,
+            'Dismiss',
+            { duration: 5000, panelClass: 'snackbar-warn' }
+          );
+        }
+
+        if (result.valid.length === 0) {
+          this.snackBar.open('No valid symbols to add', 'Dismiss', { duration: 3000 });
+          return;
+        }
+
+        // Step 2: Add valid symbols to universe
+        this.universeService.addMembers(this.selectedUniverseId!, result.valid).subscribe({
+          next: (addResult) => {
+            this.snackBar.open(
+              `Added ${addResult.added} symbol(s) to universe`,
+              'OK',
+              { duration: 3000 }
+            );
+
+            // Step 3: Trigger backfill for global universe
+            if (isGlobalUniverse && result.valid.length > 0) {
+              this.triggerBackfill(result.valid, true);
+            }
+
+            // Defer state updates to avoid NG0100
+            setTimeout(() => {
+              this.addSymbolsInput = '';
+              this.loadUniverseDetail();
+              this.cdr.detectChanges();
+            });
+          },
+          error: (err) => {
+            this.errorMsg = 'Failed to add symbols';
+            console.error(err);
+            this.cdr.detectChanges();
+          },
         });
       },
       error: (err) => {
-        this.errorMsg = 'Failed to add symbols';
+        this.validating = false;
+        this.errorMsg = 'Failed to validate symbols';
         console.error(err);
         this.cdr.detectChanges();
       },
     });
+  }
+
+  triggerBackfill(symbols: string[], isAutomatic = false): void {
+    this.backfilling = true;
+    this.cdr.detectChanges();
+
+    const message = isAutomatic
+      ? `Backfilling price history for ${symbols.length} symbol(s)...`
+      : `Backfilling ${symbols.join(', ')}...`;
+
+    this.snackBar.open(message, undefined, { duration: 2000 });
+
+    this.infoService.backfillPrices(symbols).subscribe({
+      next: (result: BackfillResult) => {
+        this.backfilling = false;
+        this.backfillingSymbol = null;
+        this.cdr.detectChanges();
+
+        const alertCount = result.alerts.length;
+        const msg = `Backfill complete: ${result.records_processed} price records loaded` +
+          (alertCount > 0 ? ` (${alertCount} warnings)` : '');
+
+        this.snackBar.open(msg, 'OK', { duration: 5000 });
+
+        // Refresh metrics to show updated coverage
+        this.loadMetrics();
+      },
+      error: (err) => {
+        this.backfilling = false;
+        this.backfillingSymbol = null;
+        this.snackBar.open('Backfill failed', 'Dismiss', { duration: 3000, panelClass: 'snackbar-error' });
+        console.error(err);
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  triggerSymbolBackfill(symbol: string): void {
+    this.backfillingSymbol = symbol;
+    this.triggerBackfill([symbol], false);
   }
 
   removeMember(symbol: string): void {

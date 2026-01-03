@@ -23,6 +23,9 @@ export interface StrategyUniverse {
 export interface MetricStatus {
   symbol: string;
   as_of_date: string | null;
+  price_first_date: string | null;
+  price_last_date: string | null;
+  bar_count: number;
 }
 
 @Injectable({ providedIn: 'root' })

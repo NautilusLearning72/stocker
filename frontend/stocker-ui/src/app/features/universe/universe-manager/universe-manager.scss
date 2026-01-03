@@ -34,3 +34,17 @@
 .metrics-table {
   width: 100%;
 }
+
+.inline-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.text-warn {
+  color: var(--color-warn, #f59e0b);
+}
+
+button mat-spinner {
+  display: inline-block;
+}
