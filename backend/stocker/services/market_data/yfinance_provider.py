@@ -31,20 +31,40 @@ class YFinanceProvider(MarketDataProvider):
             logger.error(f"yfinance download failed: {e}")
             return pd.DataFrame()
 
+        if data is None or data.empty:
+            logger.warning("yfinance returned no data")
+            return pd.DataFrame()
+
         # Transformation logic
         frames = []
+        has_multi_index = isinstance(data.columns, pd.MultiIndex)
         if len(symbols) == 1:
-            # Single ticker returns a DataFrame with direct columns
-            df = data.copy()
-            df['symbol'] = symbols[0]
-            frames.append(df)
-        else:
-            # Multi-index columns (Symbol, Metric) -> we need to stack or iterate
-            # yfinance structure for multiple tickers:
-            # columns: (Price, Ticker) -> we want to iterate tickers
-            for symbol in symbols:
+            symbol = symbols[0]
+            if has_multi_index:
                 try:
                     df = data[symbol].copy()
+                except KeyError:
+                    try:
+                        df = data.xs(symbol, axis=1, level=1).copy()
+                    except KeyError:
+                        logger.warning(f"No data for {symbol} in yfinance response")
+                        return pd.DataFrame()
+            else:
+                df = data.copy()
+            df['symbol'] = symbol
+            frames.append(df)
+        else:
+            # Multi-index columns (Symbol, Metric) -> iterate tickers
+            for symbol in symbols:
+                try:
+                    if has_multi_index:
+                        if symbol in data.columns.get_level_values(0):
+                            df = data[symbol].copy()
+                        else:
+                            df = data.xs(symbol, axis=1, level=1).copy()
+                    else:
+                        logger.warning("Unexpected yfinance response shape for multiple symbols")
+                        return pd.DataFrame()
                     df['symbol'] = symbol
                     frames.append(df)
                 except KeyError:
@@ -57,23 +77,32 @@ class YFinanceProvider(MarketDataProvider):
         result.index.name = 'date'
         result = result.reset_index()
 
-        # Rename columns to match our schema standard (lowercase, snake_case)
-        # yfinance cols: [Date, Open, High, Low, Close, Adj Close, Volume, symbol]
-        # We need: symbol, date, open, high, low, close, adj_close, volume
-        cols_map = {
-            'Date': 'date',
-            'Open': 'open',
-            'High': 'high',
-            'Low': 'low',
-            'Close': 'close',
-            'Adj Close': 'adj_close',
-            'Volume': 'volume'
-        }
-        result.rename(columns=cols_map, inplace=True)
-        
+        # Normalize columns to lowercase snake_case
+        normalized_columns = {}
+        for col in result.columns:
+            col_str = str(col).strip()
+            if col_str.lower() in {"adj close", "adj_close"}:
+                normalized_columns[col] = "adj_close"
+            else:
+                normalized_columns[col] = col_str.lower().replace(" ", "_")
+        result.rename(columns=normalized_columns, inplace=True)
+
+        if "adj_close" not in result.columns and "close" in result.columns:
+            result["adj_close"] = result["close"]
+
+        required_columns = ['symbol', 'date', 'open', 'high', 'low', 'close', 'adj_close', 'volume']
+        missing = [col for col in required_columns if col not in result.columns]
+        if missing:
+            logger.error(
+                "yfinance response missing columns: %s (available: %s)",
+                missing,
+                list(result.columns),
+            )
+            return pd.DataFrame()
+
         # Ensure correct types
         # Note: yfinance can return 0 or NaN for some cols
-        return result[['symbol', 'date', 'open', 'high', 'low', 'close', 'adj_close', 'volume']].dropna()
+        return result[required_columns].dropna()
 
     def fetch_latest_bar(self, symbol: str) -> Optional[dict]:
         # yf doesn't have a reliable low-latency "realtime" API, 
