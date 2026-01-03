@@ -109,6 +109,19 @@ result = sync_position_states()
 print(f'✓ Position state sync completed: {result}')
 "
 
+# Refresh dynamic universe if enabled
+echo -e "\n${YELLOW}🌐 Refreshing dynamic trading universe...${NC}"
+poetry run python -c "
+from stocker.tasks.universe_refresh import refresh_dynamic_universe
+result = refresh_dynamic_universe()
+if result.get('status') == 'ok':
+    print(f'✓ Universe refreshed: {result[\"symbols\"]} symbols from {result[\"source\"]}')
+elif result.get('status') == 'skipped':
+    print(f'⊘ Skipped: {result.get(\"reason\")}')
+else:
+    print(f'⚠ Result: {result}')
+"
+
 # Create log directory
 mkdir -p logs
 

@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from datetime import date
 from typing import Iterable, List, Optional
 
 from sqlalchemy import func, select, update
@@ -163,8 +164,12 @@ class UniverseService:
             universe_id = result.scalar_one_or_none()
 
             if universe_id is None:
-                logger.warning("No universe mapping for strategy %s; using static fallback", sid)
-                return settings.TRADING_UNIVERSE
+                logger.warning("No universe mapping for strategy %s", sid)
+                if settings.USE_DYNAMIC_UNIVERSE:
+                    return await self._get_dynamic_universe()
+                else:
+                    logger.info("Using static TRADING_UNIVERSE fallback")
+                    return settings.TRADING_UNIVERSE
 
             symbols_stmt = (
                 select(InstrumentUniverseMember.symbol)
@@ -180,11 +185,15 @@ class UniverseService:
             symbols = [row[0] for row in symbols_result.all()]
             if not symbols:
                 logger.warning(
-                    "Universe %s for strategy %s is empty; using static fallback",
+                    "Universe %s for strategy %s is empty",
                     universe_id,
                     sid,
                 )
-                return settings.TRADING_UNIVERSE
+                if settings.USE_DYNAMIC_UNIVERSE:
+                    return await self._get_dynamic_universe()
+                else:
+                    logger.info("Using static TRADING_UNIVERSE fallback")
+                    return settings.TRADING_UNIVERSE
             return symbols
 
     async def get_all_symbols(self) -> list[str]:
@@ -270,6 +279,19 @@ class UniverseService:
             seen.add(symbol)
             normalized.append(symbol)
         return normalized
+
+    async def _get_dynamic_universe(self) -> list[str]:
+        """Get symbols from TradingUniverseService when dynamic mode enabled."""
+        from stocker.services.trading_universe_service import TradingUniverseService
+
+        trading_universe_service = TradingUniverseService()
+        symbols = await trading_universe_service.get_universe_symbols(date.today())
+
+        logger.info(
+            f"Using dynamic universe: {len(symbols)} symbols from TradingUniverseService"
+        )
+
+        return symbols
 
     @asynccontextmanager
     async def _get_session(self):

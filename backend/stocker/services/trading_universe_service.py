@@ -64,41 +64,29 @@ class TradingUniverseService:
                 logger.error("Failed to refresh trading universe: %s", exc)
                 return 0
 
-    async def get_universe_symbols(self, as_of_date: date | None = None) -> list[str]:
-        if not settings.USE_DYNAMIC_UNIVERSE:
-            return settings.TRADING_UNIVERSE
-
-        target_date = as_of_date or date.today()
+    async def get_universe_symbols(self, as_of_date: date) -> list[str]:
+        """
+        Get trading universe symbols for a given date.
+        Returns liquidity-ranked symbols from trading_universe table.
+        """
         async with AsyncSessionLocal() as session:
-            latest_stmt = (
-                select(func.max(TradingUniverse.as_of_date))
-                .where(TradingUniverse.as_of_date <= target_date)
-                .where(TradingUniverse.source == self.source)
-            )
-            result = await session.execute(latest_stmt)
-            latest_date = result.scalar_one_or_none()
-
-            if latest_date is None:
-                logger.warning(
-                    "Dynamic universe unavailable; falling back to static list"
-                )
-                return settings.TRADING_UNIVERSE
-
-            symbols_stmt = (
+            stmt = (
                 select(TradingUniverse.symbol)
-                .where(TradingUniverse.as_of_date == latest_date)
-                .where(TradingUniverse.source == self.source)
+                .where(TradingUniverse.as_of_date == as_of_date)
                 .order_by(TradingUniverse.rank.asc())
             )
-            result = await session.execute(symbols_stmt)
+            result = await session.execute(stmt)
             symbols = [row[0] for row in result.all()]
-            if not symbols:
-                logger.warning(
-                    "Dynamic universe is empty for %s; falling back to static list",
-                    latest_date,
-                )
-                return settings.TRADING_UNIVERSE
-            return symbols
+
+        if not symbols:
+            logger.warning(
+                f"No dynamic universe data for {as_of_date}, "
+                f"falling back to static TRADING_UNIVERSE"
+            )
+            return settings.TRADING_UNIVERSE
+
+        logger.info(f"Retrieved {len(symbols)} symbols from dynamic universe")
+        return symbols
 
     async def _fetch_from_prices(
         self,

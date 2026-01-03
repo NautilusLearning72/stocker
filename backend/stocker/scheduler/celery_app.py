@@ -59,4 +59,13 @@ app.conf.beat_schedule = {
             day_of_week="mon-fri",
         ),
     },
+    "refresh-dynamic-universe": {
+        "task": "stocker.tasks.universe_refresh.refresh_dynamic_universe",
+        "schedule": crontab(
+            hour=settings.UNIVERSE_REFRESH_HOUR,
+            minute=settings.UNIVERSE_REFRESH_MINUTE,
+            day_of_week="1-5",  # Monday-Friday only
+        ),
+        "options": {"expires": 3600},
+    },
 }

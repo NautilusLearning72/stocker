@@ -42,9 +42,12 @@
                 <div class="limit-card">
                     <strong>Dynamic Universe Mode (Optional)</strong>
                     <p><code>USE_DYNAMIC_UNIVERSE=true</code></p>
-                    <p>Universe refreshed daily from market data (e.g., top N symbols by liquidity).</p>
-                    <p><strong>Universe Size:</strong> Configurable via <code>UNIVERSE_SIZE</code> (default: 250)</p>
-                    <p><strong>Source:</strong> Configurable via <code>UNIVERSE_SOURCE</code> (e.g., "alpaca_most_actives")</p>
+                    <p>Universe refreshed daily at 6 PM based on liquidity rankings.</p>
+                    <p>Used as <strong>fallback</strong> when no universe is mapped to your strategy.</p>
+                    <p><strong>Universe Size:</strong> Configurable via <code>UNIVERSE_SIZE</code> (default: 250 symbols)</p>
+                    <p><strong>Source:</strong> Configurable via <code>UNIVERSE_SOURCE</code> (alpaca_most_actives or prices)</p>
+                    <p><strong>Note:</strong> If you have a universe mapped to your strategy via Admin > Universes,
+                    that will be used instead. Dynamic mode only applies when no mapping exists.</p>
                 </div>
             </div>
         </mat-expansion-panel>
