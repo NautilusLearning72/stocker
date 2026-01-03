@@ -19,17 +19,13 @@ async def _refresh_universe_async(as_of_date: date) -> dict:
     """Async implementation of universe refresh."""
     service = TradingUniverseService()
 
-    symbols = await service.refresh_universe(
-        as_of_date=as_of_date,
-        size=settings.UNIVERSE_SIZE,
-        source=settings.UNIVERSE_SOURCE,
-        lookback_days=settings.UNIVERSE_LOOKBACK_DAYS
-    )
+    # Service reads size, source, lookback_days from settings internally
+    count = await service.refresh_universe(as_of_date=as_of_date)
 
     return {
         "status": "ok",
         "as_of_date": str(as_of_date),
-        "symbols": len(symbols),
+        "symbols": count,
         "source": settings.UNIVERSE_SOURCE,
         "size": settings.UNIVERSE_SIZE
     }
