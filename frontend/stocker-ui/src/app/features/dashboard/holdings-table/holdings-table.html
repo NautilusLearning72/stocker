@@ -1,10 +1,10 @@
-<div class="table-toolbar">
-    <mat-form-field appearance="outline" class="search-field">
+<div class="table-toolbar flex flex-wrap items-center gap-3">
+    <mat-form-field appearance="outline" class="search-field w-full sm:flex-1">
         <mat-icon matPrefix>search</mat-icon>
         <input matInput placeholder="Search symbol or name" [(ngModel)]="filterText" (ngModelChange)="applyFilter()" />
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="side-field">
+    <mat-form-field appearance="outline" class="side-field w-full sm:w-40">
         <mat-label>Side</mat-label>
         <mat-select [(ngModel)]="sideFilter" (selectionChange)="applyFilter()">
             <mat-option value="ALL">All</mat-option>
@@ -16,7 +16,7 @@
     <button mat-stroked-button type="button" (click)="clearFilters()">Clear</button>
 </div>
 
-<table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z2 hover-table">
+<table mat-table [dataSource]="dataSource" matSort class="hover-table w-full text-sm">
 
     <!-- Symbol Column -->
     <ng-container matColumnDef="symbol">
@@ -112,6 +112,6 @@
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
 </table>
 
-<div *ngIf="dataSource.filteredData.length === 0" class="no-data">
+<div *ngIf="dataSource.filteredData.length === 0" class="no-data mt-3 text-sm text-muted">
     No holdings match your filters
 </div>

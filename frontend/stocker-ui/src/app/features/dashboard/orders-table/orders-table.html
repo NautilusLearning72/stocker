@@ -1,4 +1,4 @@
-<table mat-table [dataSource]="dataSource" class="mat-elevation-z2 hover-table">
+<table mat-table [dataSource]="dataSource" class="hover-table w-full text-sm">
 
     <!-- Date Column -->
     <ng-container matColumnDef="date">
@@ -56,6 +56,6 @@
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
 </table>
 
-<div *ngIf="dataSource.length === 0" class="no-data">
+<div *ngIf="dataSource.length === 0" class="no-data mt-3 text-center text-sm text-muted">
     No orders yet
 </div>

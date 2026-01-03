@@ -13,10 +13,10 @@ import { RouterModule } from '@angular/router';
   styles: [
     `
       .symbol-link {
-        color: #1976d2;
+        color: var(--color-accent);
         text-decoration: none;
-        font-weight: 500;
-        font-family: monospace;
+        font-weight: 600;
+        font-family: var(--font-mono);
       }
       .symbol-link:hover {
         text-decoration: underline;

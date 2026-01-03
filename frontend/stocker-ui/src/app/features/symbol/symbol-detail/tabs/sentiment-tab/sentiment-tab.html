@@ -1,13 +1,13 @@
-<div class="sentiment-tab">
+<div class="sentiment-tab space-y-4">
   <!-- Loading -->
-  <div class="loading-container" *ngIf="loading">
+  <div class="loading-container flex flex-col items-center rounded-md border border-border bg-canvas p-8 text-sm text-muted" *ngIf="loading">
     <mat-spinner diameter="32"></mat-spinner>
     <p>Loading sentiment data...</p>
   </div>
 
   <ng-container *ngIf="!loading">
     <!-- Controls -->
-    <div class="controls">
+    <div class="controls mb-2">
       <mat-button-toggle-group
         [(ngModel)]="selectedDays"
         (change)="onDaysChange()"
@@ -20,7 +20,7 @@
     </div>
 
     <!-- No Data -->
-    <div class="no-data" *ngIf="sentimentData.length === 0">
+    <div class="no-data flex flex-col items-center rounded-md border border-border bg-canvas p-8 text-sm text-muted" *ngIf="sentimentData.length === 0">
       <mat-icon>sentiment_neutral</mat-icon>
       <p>No sentiment data available for this symbol.</p>
     </div>
@@ -28,7 +28,7 @@
     <!-- Content -->
     <ng-container *ngIf="sentimentData.length > 0">
       <!-- Summary Cards -->
-      <div class="stats-grid">
+      <div class="stats-grid grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <!-- Current Sentiment -->
         <mat-card class="stat-card sentiment-card" *ngIf="latestSentiment">
           <mat-card-content>
@@ -36,7 +36,7 @@
               <mat-icon>{{ getSentimentIcon(latestSentiment.sentiment_score) }}</mat-icon>
             </div>
             <div class="sentiment-info">
-              <div class="stat-label">Current Sentiment</div>
+              <div class="stat-label text-xs text-muted">Current Sentiment</div>
               <div class="stat-value" [ngClass]="getSentimentClass(latestSentiment.sentiment_score)">
                 {{ getSentimentLabel(latestSentiment.sentiment_score) }}
               </div>
@@ -49,10 +49,10 @@
         <mat-card class="stat-card">
           <mat-card-content>
             <app-metric-tooltip metric="sentiment_score"></app-metric-tooltip>
-            <div class="stat-value" [ngClass]="getSentimentClass(averageSentiment || 0)">
+            <div class="stat-value text-lg font-semibold" [ngClass]="getSentimentClass(averageSentiment || 0)">
               {{ averageSentiment !== null ? (averageSentiment | number:'1.2-2') : '-' }}
             </div>
-            <div class="stat-sublabel">{{ selectedDays }}-day average</div>
+            <div class="stat-sublabel text-xs text-muted">{{ selectedDays }}-day average</div>
           </mat-card-content>
         </mat-card>
 
@@ -60,16 +60,16 @@
         <mat-card class="stat-card">
           <mat-card-content>
             <app-metric-tooltip metric="article_count"></app-metric-tooltip>
-            <div class="stat-value">{{ totalArticles }}</div>
-            <div class="stat-sublabel">articles analyzed</div>
+            <div class="stat-value text-lg font-semibold text-text">{{ totalArticles }}</div>
+            <div class="stat-sublabel text-xs text-muted">articles analyzed</div>
           </mat-card-content>
         </mat-card>
       </div>
 
       <!-- What is Sentiment Explainer -->
-      <mat-card class="explainer-card">
+      <mat-card class="explainer-card border border-border bg-canvas-subtle">
         <mat-card-content>
-          <h4>
+          <h4 class="text-base font-semibold text-text">
             <mat-icon>lightbulb</mat-icon>
             What is Sentiment Analysis?
           </h4>
@@ -88,7 +88,7 @@
       <!-- Sentiment History -->
       <mat-card class="history-card">
         <mat-card-content>
-          <h3>Sentiment History</h3>
+          <h3 class="text-base font-semibold text-text">Sentiment History</h3>
           <div class="history-table-container">
             <table class="history-table">
               <thead>

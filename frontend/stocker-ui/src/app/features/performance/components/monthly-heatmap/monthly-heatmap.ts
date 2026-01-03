@@ -70,13 +70,13 @@ interface HeatmapRow {
     th, td {
       padding: 8px 4px;
       text-align: center;
-      border: 1px solid rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--color-border);
     }
 
     th {
-      background: #f5f5f5;
-      font-weight: 500;
-      color: #666;
+      background: var(--color-canvas-subtle);
+      font-weight: 600;
+      color: var(--color-muted);
     }
 
     .year-col {
@@ -107,11 +107,11 @@ interface HeatmapRow {
     }
 
     .positive {
-      color: #1B5E20;
+      color: var(--color-success);
     }
 
     .negative {
-      color: #B71C1C;
+      color: var(--color-danger);
     }
 
     .legend {
@@ -121,13 +121,13 @@ interface HeatmapRow {
       gap: 8px;
       margin-top: 16px;
       font-size: 11px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .legend-gradient {
       width: 200px;
       height: 12px;
-      background: linear-gradient(to right, #F44336, #FFCDD2, #FFFFFF, #C8E6C9, #4CAF50);
+      background: linear-gradient(to right, var(--color-danger-soft), var(--color-danger-muted), var(--color-canvas), var(--color-success-soft), var(--color-success));
       border-radius: 2px;
     }
 

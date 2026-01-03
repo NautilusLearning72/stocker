@@ -154,7 +154,7 @@ import { ReturnsMetrics } from '../../../../core/services/performance.service';
       align-items: center;
       justify-content: center;
       gap: 8px;
-      color: #666;
+      color: var(--color-muted);
       font-size: 13px;
       margin-bottom: 8px;
     }
@@ -167,15 +167,16 @@ import { ReturnsMetrics } from '../../../../core/services/performance.service';
 
     .metric-value {
       font-size: 24px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .metric-value.positive {
-      color: #4CAF50;
+      color: var(--color-success);
     }
 
     .metric-value.negative {
-      color: #F44336;
+      color: var(--color-danger);
     }
 
     .win-loss-section {
@@ -196,24 +197,25 @@ import { ReturnsMetrics } from '../../../../core/services/performance.service';
     }
 
     .stat-row:not(:last-child) {
-      border-bottom: 1px solid rgba(0,0,0,0.08);
+      border-bottom: 1px solid var(--color-border);
     }
 
     .stat-label {
-      color: #666;
+      color: var(--color-muted);
       font-size: 13px;
     }
 
     .stat-value {
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .stat-value.positive {
-      color: #4CAF50;
+      color: var(--color-success);
     }
 
     .stat-value.negative {
-      color: #F44336;
+      color: var(--color-danger);
     }
 
     @media (max-width: 960px) {

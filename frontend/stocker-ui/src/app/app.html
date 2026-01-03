@@ -1,16 +1,16 @@
-<mat-toolbar color="primary">
-  <span>Stocker Platform</span>
-  <app-global-search></app-global-search>
-  <span class="spacer"></span>
-  <a mat-button routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-  <a mat-button routerLink="/signals" routerLinkActive="active">Signals</a>
-  <a mat-button routerLink="/universes" routerLinkActive="active">Universes</a>
-  <a mat-button routerLink="/admin" routerLinkActive="active">Admin</a>
-  <a mat-button routerLink="/metrics" routerLinkActive="active">Metrics</a>
-  <a mat-button routerLink="/performance" routerLinkActive="active">Performance</a>
-  <a mat-button routerLink="/guide" routerLinkActive="active">Guide</a>
+<mat-toolbar class="app-toolbar flex h-12 items-center gap-4 border-b border-border bg-canvas px-4 text-sm">
+  <span class="text-base font-semibold text-text">Stocker Platform</span>
+  <app-global-search class="flex-1 max-w-sm"></app-global-search>
+  <span class="flex-1"></span>
+  <a mat-button class="text-sm font-medium text-muted hover:text-text" routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+  <a mat-button class="text-sm font-medium text-muted hover:text-text" routerLink="/signals" routerLinkActive="active">Signals</a>
+  <a mat-button class="text-sm font-medium text-muted hover:text-text" routerLink="/universes" routerLinkActive="active">Universes</a>
+  <a mat-button class="text-sm font-medium text-muted hover:text-text" routerLink="/admin" routerLinkActive="active">Admin</a>
+  <a mat-button class="text-sm font-medium text-muted hover:text-text" routerLink="/metrics" routerLinkActive="active">Metrics</a>
+  <a mat-button class="text-sm font-medium text-muted hover:text-text" routerLink="/performance" routerLinkActive="active">Performance</a>
+  <a mat-button class="text-sm font-medium text-muted hover:text-text" routerLink="/guide" routerLinkActive="active">Guide</a>
 </mat-toolbar>
 
-<div class="container">
+<div class="min-h-[calc(100vh-3rem)] bg-canvas-subtle px-6 py-4">
   <router-outlet></router-outlet>
 </div>

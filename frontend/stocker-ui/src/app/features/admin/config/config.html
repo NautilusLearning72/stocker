@@ -1,18 +1,18 @@
-<div class="config-container">
+<div class="config-container mx-auto max-w-3xl space-y-4">
   <!-- Warning Banner -->
-  <mat-card class="warning-banner">
+  <mat-card class="warning-banner flex items-center gap-2 border-l-4 border-warning bg-canvas-subtle px-4 py-3 text-sm text-warning">
     <mat-icon>warning</mat-icon>
     <span>Changes require application restart to take effect</span>
   </mat-card>
 
   <!-- Loading State -->
-  <div class="loading-container" *ngIf="loading">
+  <div class="loading-container flex flex-col items-center gap-3 rounded-md border border-border bg-canvas p-6 text-sm text-muted" *ngIf="loading">
     <mat-spinner diameter="40"></mat-spinner>
     <span>Loading configuration...</span>
   </div>
 
   <!-- Error State -->
-  <mat-card class="error-card" *ngIf="error && !loading">
+  <mat-card class="error-card flex items-center gap-2 border-l-4 border-danger bg-canvas-subtle px-4 py-3 text-sm text-danger" *ngIf="error && !loading">
     <mat-icon>error</mat-icon>
     <span>{{ error }}</span>
   </mat-card>
@@ -28,7 +28,7 @@
           </span>
         </ng-template>
 
-        <div class="tab-content">
+        <div class="tab-content px-4 py-6">
           <div class="config-form">
             <div class="config-field" *ngFor="let field of category.fields">
               <!-- Boolean Toggle -->
@@ -135,7 +135,7 @@
             </div>
           </div>
 
-          <div class="tab-actions">
+          <div class="tab-actions flex items-center justify-end gap-2 border-t border-border pt-4">
             <button
               mat-button
               (click)="resetCategory(category)"
@@ -156,8 +156,8 @@
     </mat-tab-group>
 
     <!-- Global Actions -->
-    <div class="global-actions" *ngIf="getTotalDirtyCount() > 0">
-      <span class="changes-summary">{{ getTotalDirtyCount() }} unsaved change(s)</span>
+    <div class="global-actions flex items-center justify-end gap-3 border-t border-border bg-canvas-subtle px-4 py-3" *ngIf="getTotalDirtyCount() > 0">
+      <span class="changes-summary text-sm text-muted">{{ getTotalDirtyCount() }} unsaved change(s)</span>
       <button mat-button (click)="resetAll()" [disabled]="saving">
         Reset All
       </button>

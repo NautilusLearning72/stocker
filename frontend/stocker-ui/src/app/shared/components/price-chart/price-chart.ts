@@ -52,7 +52,7 @@ export type ChartType = 'candlestick' | 'line';
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        color: #999;
+        color: var(--color-muted);
         font-size: 14px;
       }
     `,
@@ -85,32 +85,39 @@ export class PriceChart implements AfterViewInit, OnDestroy, OnChanges {
     if (!this.chartContainer?.nativeElement) return;
 
     const container = this.chartContainer.nativeElement;
+    const rootStyles = getComputedStyle(document.documentElement);
+    const canvas = rootStyles.getPropertyValue('--color-canvas').trim() || '#ffffff';
+    const accent = rootStyles.getPropertyValue('--color-accent').trim() || '#0969da';
+    const border = rootStyles.getPropertyValue('--color-border').trim() || '#d0d7de';
+    const muted = rootStyles.getPropertyValue('--color-muted').trim() || '#57606a';
+    const success = rootStyles.getPropertyValue('--color-success').trim() || '#1a7f37';
+    const danger = rootStyles.getPropertyValue('--color-danger').trim() || '#d1242f';
 
     this.chart = createChart(container, {
       width: container.clientWidth,
       height: this.height,
       layout: {
-        background: { color: '#ffffff' },
-        textColor: '#333',
+        background: { color: canvas },
+        textColor: muted,
       },
       grid: {
-        vertLines: { color: '#f0f0f0' },
-        horzLines: { color: '#f0f0f0' },
+        vertLines: { color: border },
+        horzLines: { color: border },
       },
       crosshair: {
         mode: 1,
       },
       rightPriceScale: {
-        borderColor: '#e0e0e0',
+        borderColor: border,
       },
       timeScale: {
-        borderColor: '#e0e0e0',
+        borderColor: border,
         timeVisible: true,
         secondsVisible: false,
       },
     });
 
-    this.createSeries();
+    this.createSeries(accent, success, danger);
     this.updateData();
 
     // Handle resize
@@ -123,21 +130,21 @@ export class PriceChart implements AfterViewInit, OnDestroy, OnChanges {
     this.resizeObserver.observe(container);
   }
 
-  private createSeries(): void {
+  private createSeries(accent: string, success: string, danger: string): void {
     if (!this.chart) return;
 
     if (this.chartType === 'candlestick') {
       this.series = this.chart.addSeries(CandlestickSeries, {
-        upColor: '#26a69a',
-        downColor: '#ef5350',
-        borderDownColor: '#ef5350',
-        borderUpColor: '#26a69a',
-        wickDownColor: '#ef5350',
-        wickUpColor: '#26a69a',
+        upColor: success,
+        downColor: danger,
+        borderDownColor: danger,
+        borderUpColor: success,
+        wickDownColor: danger,
+        wickUpColor: success,
       });
     } else {
       this.series = this.chart.addSeries(LineSeries, {
-        color: '#1976d2',
+        color: accent,
         lineWidth: 2,
       });
     }
@@ -147,7 +154,11 @@ export class PriceChart implements AfterViewInit, OnDestroy, OnChanges {
     if (this.series && this.chart) {
       this.chart.removeSeries(this.series);
     }
-    this.createSeries();
+    const rootStyles = getComputedStyle(document.documentElement);
+    const accent = rootStyles.getPropertyValue('--color-accent').trim() || '#0969da';
+    const success = rootStyles.getPropertyValue('--color-success').trim() || '#1a7f37';
+    const danger = rootStyles.getPropertyValue('--color-danger').trim() || '#d1242f';
+    this.createSeries(accent, success, danger);
     this.updateData();
   }
 

@@ -133,8 +133,8 @@ import { RiskMetrics } from '../../../../core/services/performance.service';
     .section-title {
       margin: 0 0 16px 0;
       font-size: 14px;
-      font-weight: 500;
-      color: #333;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .metrics-row {
@@ -152,25 +152,26 @@ import { RiskMetrics } from '../../../../core/services/performance.service';
 
     .metric-label {
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
       cursor: help;
     }
 
     .metric-value {
       font-size: 18px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .metric-value.good {
-      color: #2196F3;
+      color: var(--color-accent);
     }
 
     .metric-value.excellent {
-      color: #4CAF50;
+      color: var(--color-success);
     }
 
     .metric-value.negative {
-      color: #F44336;
+      color: var(--color-danger);
     }
 
     @media (max-width: 768px) {

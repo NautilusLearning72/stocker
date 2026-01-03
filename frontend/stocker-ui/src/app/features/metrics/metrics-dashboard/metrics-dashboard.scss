@@ -1,58 +1,4 @@
-.metrics-dashboard {
-  padding: 0 24px 24px 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.page-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 500;
-  color: #2c3e50;
-
-  mat-icon {
-    font-size: 32px;
-    width: 32px;
-    height: 32px;
-    color: #1976d2;
-  }
-}
-
-.header-controls {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.time-select {
-  width: 160px;
-}
-
-.live-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  background: #fafafa;
-  border-radius: 20px;
-}
-
 .connection-indicator {
-  display: flex;
-  align-items: center;
-
   mat-icon {
     font-size: 18px;
     width: 18px;
@@ -60,15 +6,15 @@
   }
 
   &.connected mat-icon {
-    color: #4caf50;
+    color: var(--color-success);
   }
 
   &.connecting mat-icon {
-    color: #ff9800;
+    color: var(--color-warning);
   }
 
   &.disconnected mat-icon {
-    color: #9e9e9e;
+    color: var(--color-muted);
   }
 }
 
@@ -85,64 +31,9 @@
   }
 }
 
-.section {
-  margin-bottom: 32px;
-}
-
-.section-header {
-  margin-bottom: 16px;
-
-  h2 {
-    font-size: 1.25rem;
-    font-weight: 500;
-    margin: 0 0 6px 0;
-    color: #2c3e50;
-  }
-}
-
-.help-text {
-  color: rgba(0, 0, 0, 0.55);
-  font-size: 0.875rem;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-
-  .inline-icon {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
-    vertical-align: middle;
-  }
-}
-
-mat-card {
-  border-radius: 12px;
-}
-
-mat-card-content {
-  padding: 20px !important;
-}
-
-// Responsive adjustments
-@media (max-width: 768px) {
-  .metrics-dashboard {
-    padding: 0 16px 16px 16px;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .header-controls {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .time-select {
-    flex: 1;
-    min-width: 140px;
-  }
+.help-text .inline-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
 }

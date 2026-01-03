@@ -1,30 +1,30 @@
-<mat-sidenav-container class="audit-container">
+<mat-sidenav-container class="audit-container h-full">
   <!-- Main Content -->
   <mat-sidenav-content>
-    <div class="audit-content">
+    <div class="audit-content space-y-4">
       <!-- Filters Panel -->
       <mat-card class="filters-card">
-        <div class="filters-row">
-          <mat-form-field appearance="outline" class="filter-field date-field">
+        <div class="filters-row flex flex-wrap items-center gap-3">
+          <mat-form-field appearance="outline" class="filter-field date-field w-full sm:w-40">
             <mat-label>From Date</mat-label>
             <input matInput [matDatepicker]="fromPicker" [(ngModel)]="dateFrom">
             <mat-datepicker-toggle matIconSuffix [for]="fromPicker"></mat-datepicker-toggle>
             <mat-datepicker #fromPicker></mat-datepicker>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="filter-field date-field">
+          <mat-form-field appearance="outline" class="filter-field date-field w-full sm:w-40">
             <mat-label>To Date</mat-label>
             <input matInput [matDatepicker]="toPicker" [(ngModel)]="dateTo">
             <mat-datepicker-toggle matIconSuffix [for]="toPicker"></mat-datepicker-toggle>
             <mat-datepicker #toPicker></mat-datepicker>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="filter-field symbol-field">
+          <mat-form-field appearance="outline" class="filter-field symbol-field w-full sm:w-32">
             <mat-label>Symbol</mat-label>
             <input matInput [(ngModel)]="symbolFilter" placeholder="e.g., AAPL">
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="filter-field">
+          <mat-form-field appearance="outline" class="filter-field w-full sm:w-32">
             <mat-label>Status</mat-label>
             <mat-select [(ngModel)]="statusFilter">
               <mat-option value="">All</mat-option>
@@ -35,7 +35,7 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="filter-field">
+          <mat-form-field appearance="outline" class="filter-field w-full sm:w-28">
             <mat-label>Side</mat-label>
             <mat-select [(ngModel)]="sideFilter">
               <mat-option value="">All</mat-option>
@@ -67,7 +67,7 @@
       </mat-card>
 
       <!-- Summary Bar -->
-      <div class="summary-bar" *ngIf="summary">
+      <div class="summary-bar flex flex-wrap gap-4 rounded-md border border-border bg-canvas-subtle px-4 py-3" *ngIf="summary">
         <div class="summary-item">
           <span class="label">Total Orders</span>
           <span class="value">{{ summary.total_orders }}</span>
@@ -95,14 +95,14 @@
       </div>
 
       <!-- Loading -->
-      <div class="loading-container" *ngIf="loading">
+      <div class="loading-container flex flex-col items-center justify-center rounded-md border border-border bg-canvas p-8 text-muted" *ngIf="loading">
         <mat-spinner diameter="40"></mat-spinner>
         <p>Loading audit records...</p>
       </div>
 
       <!-- Results Table -->
-      <div class="table-container" *ngIf="!loading">
-        <table mat-table [dataSource]="dataSource" matSort matSortActive="date" matSortDirection="desc" class="audit-table">
+      <div class="table-container overflow-hidden rounded-md border border-border bg-canvas" *ngIf="!loading">
+        <table mat-table [dataSource]="dataSource" matSort matSortActive="date" matSortDirection="desc" class="audit-table w-full">
           <!-- Date Column -->
           <ng-container matColumnDef="date">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
@@ -203,7 +203,7 @@
         </table>
 
         <!-- Empty State -->
-        <div *ngIf="records.length === 0" class="empty-state">
+        <div *ngIf="records.length === 0" class="empty-state flex flex-col items-center justify-center rounded-md border border-border bg-canvas p-8 text-muted">
           <mat-icon>inbox</mat-icon>
           <p>No order records found for the selected filters.</p>
         </div>
@@ -228,13 +228,13 @@
     mode="over"
     [opened]="drawerOpen"
     (closed)="closeDrawer()"
-    class="detail-drawer">
-    <div class="drawer-content" *ngIf="selectedRecord">
+    class="detail-drawer border-l border-border bg-canvas">
+    <div class="drawer-content space-y-4" *ngIf="selectedRecord">
       <!-- Drawer Header -->
-      <div class="drawer-header">
+      <div class="drawer-header flex items-start justify-between border-b border-border bg-canvas-subtle px-4 py-3">
         <div class="header-title">
-          <h2>Order Audit</h2>
-          <span class="order-id">{{ selectedRecord.order.order_id }}</span>
+          <h2 class="text-base font-semibold text-text">Order Audit</h2>
+          <span class="order-id text-xs text-muted">{{ selectedRecord.order.order_id }}</span>
         </div>
         <button mat-icon-button (click)="closeDrawer()">
           <mat-icon>close</mat-icon>
@@ -242,15 +242,15 @@
       </div>
 
       <!-- Order Summary -->
-      <div class="order-summary">
-        <div class="summary-header">
+      <div class="order-summary border-b border-border bg-canvas px-4 py-3">
+        <div class="summary-header flex flex-wrap items-center gap-3">
           <app-symbol-link [symbol]="selectedRecord.order.symbol"></app-symbol-link>
           <span class="side-badge" [ngClass]="getSideClass(selectedRecord.order.side)">
             {{ selectedRecord.order.side }}
           </span>
           <span class="qty">{{ formatQty(selectedRecord.order.qty) }} shares</span>
         </div>
-        <div class="summary-stats">
+        <div class="summary-stats grid gap-3 sm:grid-cols-2">
           <div class="stat">
             <span class="label">Status</span>
             <span class="status-badge" [ngClass]="getStatusClass(selectedRecord.order.status)">
@@ -277,12 +277,12 @@
       <mat-divider></mat-divider>
 
       <!-- Signal & Target Info -->
-      <div class="section" *ngIf="selectedRecord.signal || selectedRecord.target">
-        <h3>Decision Context</h3>
+      <div class="section px-4 py-3" *ngIf="selectedRecord.signal || selectedRecord.target">
+        <h3 class="text-xs font-semibold uppercase text-muted">Decision Context</h3>
 
-        <div class="context-card" *ngIf="selectedRecord.signal">
-          <div class="context-label">Signal</div>
-          <div class="context-content">
+        <div class="context-card rounded-md border border-border bg-canvas-subtle p-3" *ngIf="selectedRecord.signal">
+          <div class="context-label text-xs text-muted">Signal</div>
+          <div class="context-content flex flex-wrap items-center gap-3">
             <span class="direction" [class.long]="selectedRecord.signal.direction === 1"
               [class.short]="selectedRecord.signal.direction === -1">
               {{ selectedRecord.signal.direction === 1 ? 'LONG' : selectedRecord.signal.direction === -1 ? 'SHORT' : 'FLAT' }}
@@ -291,9 +291,9 @@
           </div>
         </div>
 
-        <div class="context-card" *ngIf="selectedRecord.target">
-          <div class="context-label">Target Exposure</div>
-          <div class="context-content">
+        <div class="context-card rounded-md border border-border bg-canvas-subtle p-3" *ngIf="selectedRecord.target">
+          <div class="context-label text-xs text-muted">Target Exposure</div>
+          <div class="context-content flex flex-wrap items-center gap-3">
             <span class="exposure">{{ formatPercent(selectedRecord.target.target_exposure) }}</span>
             <span class="capped" *ngIf="selectedRecord.target.is_capped">
               (Capped: {{ selectedRecord.target.reason || 'risk limit' }})
@@ -305,9 +305,9 @@
       <mat-divider></mat-divider>
 
       <!-- Discrepancies -->
-      <div class="section" *ngIf="selectedRecord.discrepancies.length > 0">
-        <h3>Discrepancies</h3>
-        <div class="discrepancy-list">
+      <div class="section px-4 py-3" *ngIf="selectedRecord.discrepancies.length > 0">
+        <h3 class="text-xs font-semibold uppercase text-muted">Discrepancies</h3>
+        <div class="discrepancy-list space-y-2">
           <div
             *ngFor="let d of selectedRecord.discrepancies"
             class="discrepancy-item"
@@ -324,18 +324,18 @@
       <mat-divider></mat-divider>
 
       <!-- Timeline -->
-      <div class="section">
-        <h3>Timeline</h3>
+      <div class="section px-4 py-3">
+        <h3 class="text-xs font-semibold uppercase text-muted">Timeline</h3>
         <app-audit-timeline [events]="selectedRecord.timeline"></app-audit-timeline>
       </div>
 
       <mat-divider></mat-divider>
 
       <!-- Fills -->
-      <div class="section" *ngIf="selectedRecord.fills.length > 0">
-        <h3>Fills</h3>
-        <div class="fills-list">
-          <div *ngFor="let fill of selectedRecord.fills" class="fill-item">
+      <div class="section px-4 py-3" *ngIf="selectedRecord.fills.length > 0">
+        <h3 class="text-xs font-semibold uppercase text-muted">Fills</h3>
+        <div class="fills-list space-y-2">
+          <div *ngFor="let fill of selectedRecord.fills" class="fill-item flex flex-wrap items-center gap-3 rounded-md border border-border bg-canvas-subtle px-3 py-2 text-sm">
             <span class="fill-qty">{{ formatQty(fill.qty) }}</span>
             <span class="fill-price">@ {{ formatPrice(fill.price) }}</span>
             <span class="fill-exchange" *ngIf="fill.exchange">{{ fill.exchange }}</span>

@@ -1,68 +1,39 @@
-.health-container {
-    padding: 16px;
-}
-
-.sync-panel {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-    padding: 16px;
-    margin-bottom: 12px;
-    border: 1px solid #e0e0e0;
-    border-radius: 12px;
-    background: #fafafa;
-}
-
 .sync-text h3 {
     margin: 0 0 4px;
 }
 
 .sync-text p {
     margin: 0;
-    color: #666;
 }
 
 .status-message {
-    margin: 0 0 12px;
-    color: #666;
-}
-
-.status-message.error {
-    color: #b00020;
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 16px;
+    margin: 0;
 }
 
 .status-card {
     border-left: 5px solid transparent;
 
     &.healthy {
-        border-left-color: #4caf50;
+        border-left-color: var(--color-success);
     }
 
     &.warning {
-        border-left-color: #ff9800;
+        border-left-color: var(--color-warning);
     }
 
     &.error {
-        border-left-color: #f44336;
+        border-left-color: var(--color-danger);
     }
 }
 
 .icon-healthy {
-    color: #4caf50;
+    color: var(--color-success);
 }
 
 .icon-warning {
-    color: #ff9800;
+    color: var(--color-warning);
 }
 
 .icon-error {
-    color: #f44336;
+    color: var(--color-danger);
 }

@@ -80,22 +80,22 @@ import { DecisionEvent } from '../../../../../core/services/audit.service';
       }
 
       &.signal {
-        background: #7c4dff;
+        background: var(--color-accent);
       }
       &.target {
-        background: #00bcd4;
+        background: var(--color-accent);
       }
       &.order, &.sizing {
-        background: #ff9800;
+        background: var(--color-warning);
       }
       &.execution {
-        background: #4caf50;
+        background: var(--color-success);
       }
       &.risk {
-        background: #f44336;
+        background: var(--color-danger);
       }
       &.diversification {
-        background: #9c27b0;
+        background: var(--color-muted);
       }
     }
 
@@ -105,7 +105,7 @@ import { DecisionEvent } from '../../../../../core/services/audit.service';
       top: 36px;
       bottom: 0;
       width: 2px;
-      background: #e0e0e0;
+      background: var(--color-border);
     }
 
     .timeline-content {
@@ -122,8 +122,8 @@ import { DecisionEvent } from '../../../../../core/services/audit.service';
 
     .time {
       font-size: 12px;
-      color: #666;
-      font-family: monospace;
+      color: var(--color-muted);
+      font-family: var(--font-mono);
     }
 
     .stage-badge {
@@ -131,33 +131,34 @@ import { DecisionEvent } from '../../../../../core/services/audit.service';
       padding: 2px 8px;
       border-radius: 12px;
       text-transform: uppercase;
-      font-weight: 500;
+      font-weight: 600;
       color: white;
 
-      &.signal { background: #7c4dff; }
-      &.target { background: #00bcd4; }
-      &.order, &.sizing { background: #ff9800; }
-      &.execution { background: #4caf50; }
-      &.risk { background: #f44336; }
-      &.diversification { background: #9c27b0; }
+      &.signal { background: var(--color-accent); }
+      &.target { background: var(--color-accent); }
+      &.order, &.sizing { background: var(--color-warning); }
+      &.execution { background: var(--color-success); }
+      &.risk { background: var(--color-danger); }
+      &.diversification { background: var(--color-muted); }
     }
 
     .timeline-body {
-      background: #f5f5f5;
+      background: var(--color-canvas-subtle);
+      border: 1px solid var(--color-border);
       border-radius: 8px;
       padding: 12px;
     }
 
     .event-type {
-      font-weight: 500;
-      color: #333;
+      font-weight: 600;
+      color: var(--color-text);
       display: block;
       margin-bottom: 4px;
     }
 
     .description {
       margin: 0;
-      color: #666;
+      color: var(--color-muted);
       font-size: 14px;
       line-height: 1.4;
     }
@@ -168,7 +169,7 @@ import { DecisionEvent } from '../../../../../core/services/audit.service';
       gap: 4px;
       margin-top: 8px;
       font-size: 12px;
-      color: #888;
+      color: var(--color-muted);
       cursor: pointer;
 
       .meta-icon {
@@ -184,7 +185,7 @@ import { DecisionEvent } from '../../../../../core/services/audit.service';
       align-items: center;
       justify-content: center;
       padding: 32px;
-      color: #999;
+      color: var(--color-muted);
 
       mat-icon {
         font-size: 48px;

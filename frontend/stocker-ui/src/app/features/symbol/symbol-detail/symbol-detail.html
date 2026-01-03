@@ -1,35 +1,35 @@
-<div class="symbol-detail-container">
+<div class="symbol-detail-container mx-auto max-w-6xl space-y-4">
   <!-- Loading State -->
-  <div class="loading-container" *ngIf="loading">
+  <div class="loading-container flex flex-col items-center justify-center rounded-md border border-border bg-canvas p-10 text-muted" *ngIf="loading">
     <mat-spinner diameter="48"></mat-spinner>
     <p>Loading {{ symbol }}...</p>
   </div>
 
   <!-- Error State -->
-  <div class="error-container" *ngIf="error && !loading">
-    <mat-icon class="error-icon">error_outline</mat-icon>
-    <p class="error-message">{{ error }}</p>
+  <div class="error-container flex flex-col items-center justify-center rounded-md border border-border bg-canvas p-10 text-muted" *ngIf="error && !loading">
+    <mat-icon class="error-icon text-danger">error_outline</mat-icon>
+    <p class="error-message text-base text-danger">{{ error }}</p>
   </div>
 
   <!-- Content -->
   <ng-container *ngIf="detail && !loading">
     <!-- Header -->
-    <div class="symbol-header">
+    <div class="symbol-header flex flex-wrap items-start justify-between gap-4">
       <div class="symbol-title">
-        <h1 class="symbol-ticker">{{ detail.symbol }}</h1>
-        <span class="company-name">{{ detail.name || 'Unknown Company' }}</span>
+        <h1 class="symbol-ticker font-mono text-2xl font-semibold text-accent">{{ detail.symbol }}</h1>
+        <span class="company-name text-sm text-muted">{{ detail.name || 'Unknown Company' }}</span>
       </div>
-      <div class="symbol-badges">
-        <mat-chip *ngIf="detail.sector" class="badge sector-badge">
+      <div class="symbol-badges flex flex-wrap gap-2">
+        <mat-chip *ngIf="detail.sector" class="badge sector-badge text-xs">
           {{ detail.sector }}
         </mat-chip>
-        <mat-chip *ngIf="detail.industry" class="badge industry-badge">
+        <mat-chip *ngIf="detail.industry" class="badge industry-badge text-xs">
           {{ detail.industry }}
         </mat-chip>
-        <mat-chip *ngIf="detail.exchange" class="badge exchange-badge">
+        <mat-chip *ngIf="detail.exchange" class="badge exchange-badge text-xs">
           {{ detail.exchange }}
         </mat-chip>
-        <mat-chip *ngIf="!detail.active" class="badge inactive-badge" color="warn">
+        <mat-chip *ngIf="!detail.active" class="badge inactive-badge text-xs" color="warn">
           Inactive
         </mat-chip>
       </div>

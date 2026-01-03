@@ -6,33 +6,275 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-canvas: #ffffff;
+  --color-canvas-subtle: #f6f8fa;
+  --color-border: #d0d7de;
+  --color-text: #24292f;
+  --color-muted: #57606a;
+  --color-accent: #0969da;
+  --color-success: #1a7f37;
+  --color-danger: #d1242f;
+  --color-warning: #9a6700;
+
+  --color-accent-soft: #ddf4ff;
+  --color-accent-softer: #f1f8ff;
+  --color-success-soft: #dafbe1;
+  --color-success-muted: #c6f6d5;
+  --color-warning-soft: #fff8c5;
+  --color-warning-muted: #fff1a8;
+  --color-danger-soft: #ffebe9;
+  --color-danger-muted: #ffdcd5;
+
+  --color-accent-ring: rgba(9, 105, 218, 0.2);
+  --color-accent-ghost: rgba(9, 105, 218, 0.08);
+  --color-overlay: rgba(246, 248, 250, 0.85);
+  --color-tooltip-bg: rgba(33, 33, 33, 0.95);
+  --color-tooltip-text: #ffffff;
+
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', 'Helvetica',
+    'Arial', 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+
+  --line-height-base: 1.5;
+  --line-height-tight: 1.3;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --shadow-subtle: 0 1px 0 rgba(27, 31, 36, 0.04);
+  --shadow-popover: 0 8px 24px rgba(27, 31, 36, 0.12);
+  --shadow-focus: 0 0 0 2px var(--color-accent-ring);
+}
+
 html {
   height: 100%;
   @include mat.theme((
     color: (
-      primary: mat.$azure-palette,
+      primary: mat.$blue-palette,
       tertiary: mat.$blue-palette,
+      theme-type: light,
     ),
-    typography: Roboto,
-    density: 0,
+    typography: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "Helvetica", "Arial", "Apple Color Emoji", "Segoe UI Emoji"',
+    density: -1,
   ));
 }
 
 body {
   // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
+  // `dark` to enable the dark color theme.
   color-scheme: light;
 
   // Set a default background, font and text colors for the application using
   // Angular Material's system-level CSS variables. Learn more about these
   // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
+  background-color: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
 
   // Reset the user agent margin.
   margin: 0;
   height: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #0d1117;
+    --color-canvas-subtle: #161b22;
+    --color-border: #30363d;
+    --color-text: #c9d1d9;
+    --color-muted: #8b949e;
+    --color-accent: #2f81f7;
+    --color-success: #3fb950;
+    --color-danger: #f85149;
+    --color-warning: #d29922;
+
+    --color-accent-soft: #0b2d4f;
+    --color-accent-softer: #0f1f33;
+    --color-success-soft: #0f2d1a;
+    --color-success-muted: #153d25;
+    --color-warning-soft: #3d2f10;
+    --color-warning-muted: #4a3a14;
+    --color-danger-soft: #3b0b0b;
+    --color-danger-muted: #4a1414;
+
+    --color-accent-ring: rgba(47, 129, 247, 0.3);
+    --color-accent-ghost: rgba(47, 129, 247, 0.12);
+    --color-overlay: rgba(13, 17, 23, 0.85);
+    --color-tooltip-bg: rgba(22, 27, 34, 0.95);
+    --color-tooltip-text: #c9d1d9;
+
+    --shadow-subtle: 0 1px 0 rgba(255, 255, 255, 0.06);
+    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 2px var(--color-accent-ring);
+  }
+
+  html {
+    @include mat.theme((
+      color: (
+        primary: mat.$blue-palette,
+        tertiary: mat.$blue-palette,
+        theme-type: dark,
+      ),
+      typography: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "Helvetica", "Arial", "Apple Color Emoji", "Segoe UI Emoji"',
+      density: -1,
+    ));
+  }
+
+  body {
+    color-scheme: dark;
+  }
+}
+
+:root {
+  @include mat.theme-overrides((
+    primary: var(--color-accent),
+    on-primary: #ffffff,
+    primary-container: var(--color-accent-soft),
+    on-primary-container: var(--color-text),
+    secondary: var(--color-muted),
+    on-secondary: #ffffff,
+    tertiary: var(--color-accent),
+    on-tertiary: #ffffff,
+    surface: var(--color-canvas),
+    on-surface: var(--color-text),
+    surface-container-low: var(--color-canvas-subtle),
+    surface-container: var(--color-canvas-subtle),
+    outline: var(--color-border),
+    outline-variant: var(--color-border),
+    error: var(--color-danger),
+    on-error: #ffffff
+  ));
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+button,
+a,
+input,
+textarea,
+select,
+[tabindex]:not([tabindex='-1']) {
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+.mat-mdc-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-subtle);
+}
+
+.mat-mdc-card-header {
+  padding: 12px 16px 0;
+}
+
+.mat-mdc-card-content {
+  padding: 12px 16px 16px;
+}
+
+.mat-mdc-card-subtitle {
+  color: var(--color-muted);
+}
+
+.mat-mdc-button,
+.mat-mdc-outlined-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-raised-button {
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mat-mdc-unelevated-button.mat-primary,
+.mat-mdc-raised-button.mat-primary {
+  background: var(--color-accent);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.mat-mdc-unelevated-button.mat-warn,
+.mat-mdc-raised-button.mat-warn {
+  background: var(--color-danger);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.mat-mdc-outlined-button {
+  border-color: var(--color-border);
+}
+
+.mat-mdc-icon-button {
+  color: var(--color-muted);
+}
+
+.mat-mdc-icon-button:hover {
+  color: var(--color-text);
+}
+
+.mat-mdc-table {
+  background: var(--color-canvas);
+}
+
+.mat-mdc-header-row,
+.mat-mdc-row {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.mat-mdc-row:hover {
+  background: var(--color-canvas-subtle);
+}
+
+.mat-mdc-header-cell {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.mat-mdc-tab-group {
+  --mat-tab-header-divider-color: var(--color-border);
+}
+
+.mat-mdc-tab .mdc-tab__text-label {
+  font-weight: 600;
+}
+
+.mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
+  color: var(--color-text);
+}
+
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-outline-color: var(--color-border);
+  --mdc-outlined-text-field-hover-outline-color: var(--color-border);
+  --mdc-outlined-text-field-focus-outline-color: var(--color-accent);
+  --mdc-outlined-text-field-container-color: var(--color-canvas);
+  --mdc-outlined-text-field-label-text-color: var(--color-muted);
+  --mdc-outlined-text-field-focus-label-text-color: var(--color-accent);
+  --mdc-outlined-text-field-input-text-color: var(--color-text);
+  --mat-form-field-container-height: 36px;
 }
 /* You can add global styles to this file, and also import other style files */

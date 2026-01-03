@@ -1,7 +1,7 @@
-<div class="event-feed">
+<div class="event-feed space-y-4">
   <!-- Filter Bar -->
-  <div class="filter-bar">
-    <mat-form-field appearance="outline" class="filter-field">
+  <div class="filter-bar flex flex-wrap items-start gap-3">
+    <mat-form-field appearance="outline" class="filter-field w-full sm:w-48">
       <mat-label>Category</mat-label>
       <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
         <mat-option value="">All Categories</mat-option>
@@ -12,7 +12,7 @@
       <mat-hint *ngIf="selectedCategory">{{ getCategoryDescription(selectedCategory) }}</mat-hint>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="filter-field">
+    <mat-form-field appearance="outline" class="filter-field w-full sm:w-48">
       <mat-label>Event Type</mat-label>
       <mat-select
         [(ngModel)]="selectedEventType"
@@ -25,7 +25,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="filter-field symbol-field">
+    <mat-form-field appearance="outline" class="filter-field symbol-field w-full sm:w-36">
       <mat-label>Symbol</mat-label>
       <input
         matInput
@@ -45,20 +45,20 @@
   </div>
 
   <!-- Live Indicator -->
-  <div *ngIf="isLive" class="live-indicator">
+  <div *ngIf="isLive" class="live-indicator flex items-center gap-2 rounded-md border border-border bg-canvas-subtle px-3 py-2 text-xs text-success">
     <span class="pulse"></span>
     <span>Live - New events appear automatically</span>
   </div>
 
   <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
+  <div *ngIf="loading" class="loading-container flex flex-col items-center justify-center rounded-md border border-border bg-canvas p-8 text-muted">
     <mat-spinner diameter="40"></mat-spinner>
     <p>Loading events...</p>
   </div>
 
   <!-- Events Table -->
-  <div class="table-container" *ngIf="!loading">
-    <table mat-table [dataSource]="events" class="events-table">
+  <div class="table-container overflow-x-auto rounded-md border border-border bg-canvas" *ngIf="!loading">
+    <table mat-table [dataSource]="events" class="events-table w-full text-sm">
 
       <!-- Timestamp Column -->
       <ng-container matColumnDef="timestamp">
@@ -127,7 +127,7 @@
     </table>
 
     <!-- Empty State -->
-    <div *ngIf="events.length === 0" class="empty-state">
+    <div *ngIf="events.length === 0" class="empty-state flex flex-col items-center justify-center rounded-md border border-border bg-canvas p-8 text-muted">
       <mat-icon>inbox</mat-icon>
       <p>No events found for the selected filters.</p>
     </div>

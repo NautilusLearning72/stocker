@@ -1,118 +1,41 @@
-.symbol-detail-container {
-  padding: 0 24px 24px 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px;
-  color: rgba(0, 0, 0, 0.5);
-
-  p {
-    margin-top: 16px;
-  }
+.loading-container p {
+  margin-top: 16px;
 }
 
 .error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px;
-
   .error-icon {
     font-size: 64px;
     width: 64px;
     height: 64px;
-    color: #f44336;
   }
 
   .error-message {
     margin-top: 16px;
-    font-size: 1.25rem;
-    color: rgba(0, 0, 0, 0.6);
   }
 }
 
-.symbol-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.symbol-title {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.symbol-ticker {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 600;
-  font-family: monospace;
-  color: #1976d2;
-}
-
-.company-name {
-  font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.6);
-}
-
-.symbol-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.badge {
-  font-size: 12px;
-}
-
 .sector-badge {
-  background-color: #e3f2fd !important;
-  color: #1565c0 !important;
+  background-color: var(--color-accent-soft) !important;
+  color: var(--color-accent) !important;
 }
 
 .industry-badge {
-  background-color: #f3e5f5 !important;
-  color: #7b1fa2 !important;
+  background-color: var(--color-accent-softer) !important;
+  color: var(--color-accent) !important;
 }
 
 .exchange-badge {
-  background-color: #e8f5e9 !important;
-  color: #2e7d32 !important;
+  background-color: var(--color-success-soft) !important;
+  color: var(--color-success) !important;
 }
 
 .inactive-badge {
-  background-color: #ffebee !important;
-  color: #c62828 !important;
+  background-color: var(--color-danger-soft) !important;
+  color: var(--color-danger) !important;
 }
 
 .symbol-tabs {
   ::ng-deep .mat-mdc-tab-body-wrapper {
     padding-top: 24px;
-  }
-}
-
-// Responsive
-@media (max-width: 768px) {
-  .symbol-detail-container {
-    padding: 0 16px 16px 16px;
-  }
-
-  .symbol-header {
-    flex-direction: column;
-  }
-
-  .symbol-ticker {
-    font-size: 1.5rem;
   }
 }

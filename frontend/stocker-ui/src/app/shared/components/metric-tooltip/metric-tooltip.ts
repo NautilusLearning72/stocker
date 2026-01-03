@@ -29,18 +29,18 @@ import { METRIC_DEFINITIONS } from './metric-definitions';
         gap: 4px;
       }
       .metric-label {
-        color: rgba(0, 0, 0, 0.6);
+        color: var(--color-muted);
         font-size: 0.8125rem;
       }
       .info-icon {
         font-size: 16px;
         width: 16px;
         height: 16px;
-        color: #9e9e9e;
+        color: var(--color-muted);
         cursor: help;
       }
       .info-icon:hover {
-        color: #1976d2;
+        color: var(--color-accent);
       }
     `,
   ],

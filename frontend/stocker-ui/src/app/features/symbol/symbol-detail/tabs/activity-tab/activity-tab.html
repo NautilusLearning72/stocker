@@ -1,6 +1,6 @@
-<div class="activity-tab">
+<div class="activity-tab space-y-4">
   <!-- Loading -->
-  <div class="loading-container" *ngIf="loading">
+  <div class="loading-container flex flex-col items-center rounded-md border border-border bg-canvas p-8 text-sm text-muted" *ngIf="loading">
     <mat-spinner diameter="32"></mat-spinner>
     <p>Loading activity data...</p>
   </div>
@@ -9,28 +9,28 @@
     <!-- Current Holding -->
     <mat-card class="holding-card">
       <mat-card-content>
-        <h3>
-          <mat-icon>account_balance_wallet</mat-icon>
+        <h3 class="flex items-center gap-2 text-base font-semibold text-text">
+          <mat-icon class="text-accent">account_balance_wallet</mat-icon>
           Current Position
         </h3>
-        <div class="no-holding" *ngIf="!holding">
+        <div class="no-holding rounded-md border border-border bg-canvas-subtle p-4 text-sm text-muted" *ngIf="!holding">
           <p>You don't currently hold any shares of {{ symbol }}.</p>
         </div>
-        <div class="holding-details" *ngIf="holding">
+        <div class="holding-details grid gap-4 sm:grid-cols-2" *ngIf="holding">
           <div class="detail-item">
-            <span class="label">Quantity</span>
-            <span class="value">{{ holding.qty | number:'1.0-4' }}</span>
+            <span class="label text-xs uppercase text-muted">Quantity</span>
+            <span class="value text-lg font-semibold text-text">{{ holding.qty | number:'1.0-4' }}</span>
           </div>
           <div class="detail-item">
-            <span class="label">Cost Basis</span>
-            <span class="value">${{ holding.cost_basis | number:'1.2-2' }}</span>
+            <span class="label text-xs uppercase text-muted">Cost Basis</span>
+            <span class="value text-lg font-semibold text-text">${{ holding.cost_basis | number:'1.2-2' }}</span>
           </div>
           <div class="detail-item">
-            <span class="label">Market Value</span>
-            <span class="value">${{ holding.market_value | number:'1.2-2' }}</span>
+            <span class="label text-xs uppercase text-muted">Market Value</span>
+            <span class="value text-lg font-semibold text-text">${{ holding.market_value | number:'1.2-2' }}</span>
           </div>
           <div class="detail-item">
-            <span class="label">Unrealized P&L</span>
+            <span class="label text-xs uppercase text-muted">Unrealized P&L</span>
             <span
               class="value pnl"
               [class.positive]="getPnL()! >= 0"
@@ -47,15 +47,15 @@
     <!-- Order History -->
     <mat-card class="orders-card">
       <mat-card-content>
-        <h3>
-          <mat-icon>receipt_long</mat-icon>
+        <h3 class="flex items-center gap-2 text-base font-semibold text-text">
+          <mat-icon class="text-accent">receipt_long</mat-icon>
           Order History
         </h3>
-        <div class="no-data" *ngIf="orders.length === 0">
+        <div class="no-data rounded-md border border-border bg-canvas-subtle p-4 text-sm text-muted" *ngIf="orders.length === 0">
           <p>No orders found for {{ symbol }}.</p>
         </div>
-        <div class="table-container" *ngIf="orders.length > 0">
-          <table mat-table [dataSource]="orders" class="orders-table">
+        <div class="table-container overflow-x-auto rounded-md border border-border bg-canvas" *ngIf="orders.length > 0">
+          <table mat-table [dataSource]="orders" class="orders-table w-full text-sm">
             <ng-container matColumnDef="date">
               <th mat-header-cell *matHeaderCellDef>Date</th>
               <td mat-cell *matCellDef="let order">{{ order.date }}</td>
@@ -101,15 +101,15 @@
     <!-- Recent Signals -->
     <mat-card class="signals-card">
       <mat-card-content>
-        <h3>
-          <mat-icon>show_chart</mat-icon>
+        <h3 class="flex items-center gap-2 text-base font-semibold text-text">
+          <mat-icon class="text-accent">show_chart</mat-icon>
           Recent Signals
         </h3>
-        <div class="no-data" *ngIf="signals.length === 0">
+        <div class="no-data rounded-md border border-border bg-canvas-subtle p-4 text-sm text-muted" *ngIf="signals.length === 0">
           <p>No signals found for {{ symbol }}.</p>
         </div>
-        <div class="table-container" *ngIf="signals.length > 0">
-          <table mat-table [dataSource]="signals" class="signals-table">
+        <div class="table-container overflow-x-auto rounded-md border border-border bg-canvas" *ngIf="signals.length > 0">
+          <table mat-table [dataSource]="signals" class="signals-table w-full text-sm">
             <ng-container matColumnDef="date">
               <th mat-header-cell *matHeaderCellDef>Date</th>
               <td mat-cell *matCellDef="let signal">{{ signal.date }}</td>

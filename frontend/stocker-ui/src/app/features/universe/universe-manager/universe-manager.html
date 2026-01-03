@@ -1,11 +1,11 @@
-<mat-tab-group>
+<mat-tab-group class="mt-2">
   <mat-tab label="Manage">
-    <div class="grid">
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
       <mat-card class="card tall">
-        <div class="card-header">
+        <div class="card-header flex items-start justify-between">
           <div>
-            <div class="eyebrow">Universes</div>
-            <h3>{{ (universes | universeName:selectedUniverseId) || 'Select' }}</h3>
+            <div class="eyebrow text-xs uppercase tracking-wide text-muted">Universes</div>
+            <h3 class="text-base font-semibold text-text">{{ (universes | universeName:selectedUniverseId) || 'Select' }}</h3>
           </div>
         </div>
         <mat-card-content>
@@ -18,7 +18,7 @@
             </mat-select>
           </mat-form-field>
 
-          <div class="controls">
+          <div class="controls flex flex-wrap items-center gap-3">
             <mat-form-field appearance="outline" class="full">
               <mat-label>Add symbols (comma/space separated)</mat-label>
               <textarea matInput rows="2" [(ngModel)]="addSymbolsInput"></textarea>
@@ -31,15 +31,15 @@
             <input matInput [(ngModel)]="memberFilter" (ngModelChange)="onFilterChange()" placeholder="Search symbol or name" />
           </mat-form-field>
 
-      <div class="members-header">
-        <h4>Members ({{ filteredMembers.length }})</h4>
-        <span class="status" *ngIf="filteredMembers.length === 0">No symbols yet</span>
-        <span class="status" *ngIf="selectedMembers.size">Selected: {{ selectedMembers.size }}</span>
+      <div class="members-header flex flex-wrap items-center gap-3">
+        <h4 class="text-sm font-semibold text-text">Members ({{ filteredMembers.length }})</h4>
+        <span class="status text-sm text-muted" *ngIf="filteredMembers.length === 0">No symbols yet</span>
+        <span class="status text-sm text-muted" *ngIf="selectedMembers.size">Selected: {{ selectedMembers.size }}</span>
         <button mat-stroked-button color="warn" (click)="removeSelected()" [disabled]="!selectedMembers.size">Remove selected</button>
       </div>
 
-      <div class="table-container">
-        <table mat-table [dataSource]="filteredMembers" class="mat-elevation-z1" *ngIf="filteredMembers.length">
+      <div class="table-container max-h-80 overflow-y-auto rounded-md border border-border bg-canvas">
+        <table mat-table [dataSource]="filteredMembers" class="w-full" *ngIf="filteredMembers.length">
           <ng-container matColumnDef="select">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let sym">
@@ -70,20 +70,20 @@
           <tr mat-header-row *matHeaderRowDef="['select','symbol','actions']"></tr>
           <tr mat-row *matRowDef="let row; columns: ['select','symbol','actions'];"></tr>
         </table>
-        <div *ngIf="!filteredMembers.length" class="status">No symbols yet.</div>
+        <div *ngIf="!filteredMembers.length" class="status px-3 py-2 text-sm text-muted">No symbols yet.</div>
       </div>
         </mat-card-content>
       </mat-card>
 
       <mat-card class="card tall">
-        <div class="card-header">
+        <div class="card-header flex items-start justify-between">
           <div>
-            <div class="eyebrow">Metrics</div>
-            <h3>Coverage</h3>
+            <div class="eyebrow text-xs uppercase tracking-wide text-muted">Metrics</div>
+            <h3 class="text-base font-semibold text-text">Coverage</h3>
           </div>
         </div>
         <mat-card-content>
-          <table mat-table [dataSource]="filteredMembers" class="metrics-table" *ngIf="filteredMembers.length; else noMetrics">
+          <table mat-table [dataSource]="filteredMembers" class="metrics-table w-full" *ngIf="filteredMembers.length; else noMetrics">
             <ng-container matColumnDef="symbol">
               <th mat-header-cell *matHeaderCellDef>Symbol</th>
               <td mat-cell *matCellDef="let sym">
@@ -101,7 +101,7 @@
             <tr mat-row *matRowDef="let row; columns: ['symbol', 'as_of_date'];"></tr>
           </table>
           <ng-template #noMetrics>
-            <div class="status">No symbols to show.</div>
+            <div class="status text-sm text-muted">No symbols to show.</div>
           </ng-template>
         </mat-card-content>
       </mat-card>
@@ -109,11 +109,11 @@
   </mat-tab>
 
   <mat-tab label="Admin">
-    <div class="grid">
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
       <mat-card class="card">
-        <div class="card-header">
-          <div class="eyebrow">Universe Admin</div>
-          <h3>Create a universe</h3>
+        <div class="card-header flex items-start justify-between">
+          <div class="eyebrow text-xs uppercase tracking-wide text-muted">Universe Admin</div>
+          <h3 class="text-base font-semibold text-text">Create a universe</h3>
         </div>
         <mat-card-content class="create-form">
           <mat-form-field appearance="outline" class="full">
@@ -133,9 +133,9 @@
       </mat-card>
 
       <mat-card class="card">
-        <div class="card-header">
-          <div class="eyebrow">Strategy</div>
-          <h3>Strategy mapping</h3>
+        <div class="card-header flex items-start justify-between">
+          <div class="eyebrow text-xs uppercase tracking-wide text-muted">Strategy</div>
+          <h3 class="text-base font-semibold text-text">Strategy mapping</h3>
         </div>
         <mat-card-content class="strategy">
           <mat-form-field appearance="outline" class="full">
@@ -155,4 +155,4 @@
   </mat-tab>
 </mat-tab-group>
 
-<div class="error" *ngIf="errorMsg">{{ errorMsg }}</div>
+<div class="error text-sm text-danger" *ngIf="errorMsg">{{ errorMsg }}</div>

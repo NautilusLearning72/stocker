@@ -153,16 +153,16 @@ import { ExecutionMetrics } from '../../../../core/services/performance.service'
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #E3F2FD;
-      color: #2196F3;
+      background: var(--color-accent-soft);
+      color: var(--color-accent);
     }
 
-    .stat-icon.orders { background: #E3F2FD; color: #2196F3; }
-    .stat-icon.fill-rate { background: #E8F5E9; color: #4CAF50; }
-    .stat-icon.fill-rate.good { background: #C8E6C9; }
-    .stat-icon.partial { background: #FFF3E0; color: #FF9800; }
-    .stat-icon.rejected { background: #FFEBEE; color: #F44336; }
-    .stat-icon.rejected.warning { background: #FFCDD2; }
+    .stat-icon.orders { background: var(--color-accent-soft); color: var(--color-accent); }
+    .stat-icon.fill-rate { background: var(--color-success-soft); color: var(--color-success); }
+    .stat-icon.fill-rate.good { background: var(--color-success-muted); }
+    .stat-icon.partial { background: var(--color-warning-soft); color: var(--color-warning); }
+    .stat-icon.rejected { background: var(--color-danger-soft); color: var(--color-danger); }
+    .stat-icon.rejected.warning { background: var(--color-danger-muted); }
 
     .stat-content {
       display: flex;
@@ -171,12 +171,13 @@ import { ExecutionMetrics } from '../../../../core/services/performance.service'
 
     .stat-value {
       font-size: 24px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .stat-label {
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .section-card {
@@ -186,8 +187,8 @@ import { ExecutionMetrics } from '../../../../core/services/performance.service'
     .section-title {
       margin: 0 0 16px 0;
       font-size: 14px;
-      font-weight: 500;
-      color: #333;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .cost-grid {
@@ -204,12 +205,13 @@ import { ExecutionMetrics } from '../../../../core/services/performance.service'
 
     .cost-label {
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .cost-value {
       font-size: 18px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .symbol-table {
@@ -217,7 +219,7 @@ import { ExecutionMetrics } from '../../../../core/services/performance.service'
     }
 
     .good {
-      color: #4CAF50;
+      color: var(--color-success);
     }
 
     .empty-card {
@@ -226,7 +228,7 @@ import { ExecutionMetrics } from '../../../../core/services/performance.service'
       align-items: center;
       justify-content: center;
       padding: 48px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .empty-card mat-icon {

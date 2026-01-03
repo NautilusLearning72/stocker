@@ -1,12 +1,12 @@
-<div class="performance-dashboard">
+<div class="performance-dashboard mx-auto max-w-6xl space-y-4">
   <!-- Header -->
-  <div class="page-header">
-    <div class="header-title">
-      <mat-icon>analytics</mat-icon>
-      <h1>Performance</h1>
+  <div class="page-header flex flex-wrap items-center justify-between gap-4">
+    <div class="header-title flex items-center gap-2">
+      <mat-icon class="text-accent">analytics</mat-icon>
+      <h1 class="text-xl font-semibold text-text">Performance</h1>
     </div>
 
-    <div class="header-controls">
+    <div class="header-controls flex flex-wrap items-center gap-3">
       <!-- Granularity Toggle -->
       <mat-button-toggle-group
         [(ngModel)]="granularity"
@@ -17,14 +17,14 @@
       </mat-button-toggle-group>
 
       <!-- Date Range -->
-      <mat-form-field appearance="outline" class="date-field">
+      <mat-form-field appearance="outline" class="date-field w-full sm:w-36">
         <mat-label>Start Date</mat-label>
         <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate" (dateChange)="onDateChange()">
         <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
         <mat-datepicker #startPicker></mat-datepicker>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="date-field">
+      <mat-form-field appearance="outline" class="date-field w-full sm:w-36">
         <mat-label>End Date</mat-label>
         <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate" (dateChange)="onDateChange()">
         <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
@@ -50,10 +50,10 @@
         <span>Overview</span>
       </ng-template>
 
-      <div class="tab-content">
+      <div class="tab-content py-4">
         <!-- Equity Curve -->
         <section class="section">
-          <h2 class="section-title">Equity Curve</h2>
+          <h2 class="section-title text-base font-semibold text-text">Equity Curve</h2>
           <mat-card class="chart-card">
             <mat-spinner *ngIf="loading.equity" diameter="40"></mat-spinner>
             <app-equity-curve-chart
@@ -66,7 +66,7 @@
 
         <!-- Returns Summary -->
         <section class="section">
-          <h2 class="section-title">Returns</h2>
+          <h2 class="section-title text-base font-semibold text-text">Returns</h2>
           <mat-spinner *ngIf="loading.returns" diameter="40"></mat-spinner>
           <app-returns-summary
             *ngIf="!loading.returns"
@@ -76,7 +76,7 @@
 
         <!-- Monthly Heatmap -->
         <section class="section" *ngIf="returnsMetrics?.monthly_returns?.length">
-          <h2 class="section-title">Monthly Returns</h2>
+          <h2 class="section-title text-base font-semibold text-text">Monthly Returns</h2>
           <mat-card class="heatmap-card">
             <app-monthly-heatmap
               [monthlyReturns]="returnsMetrics?.monthly_returns || []">
@@ -93,7 +93,7 @@
         <span>Risk</span>
       </ng-template>
 
-      <div class="tab-content">
+      <div class="tab-content py-4">
         <mat-spinner *ngIf="loading.risk" diameter="40"></mat-spinner>
         <app-risk-metrics
           *ngIf="!loading.risk"
@@ -109,7 +109,7 @@
         <span>Execution</span>
       </ng-template>
 
-      <div class="tab-content">
+      <div class="tab-content py-4">
         <mat-spinner *ngIf="loading.execution" diameter="40"></mat-spinner>
         <app-execution-quality
           *ngIf="!loading.execution"
@@ -125,7 +125,7 @@
         <span>Signals</span>
       </ng-template>
 
-      <div class="tab-content">
+      <div class="tab-content py-4">
         <mat-spinner *ngIf="loading.signals" diameter="40"></mat-spinner>
         <app-signal-stats
           *ngIf="!loading.signals"
@@ -141,7 +141,7 @@
         <span>Exposure</span>
       </ng-template>
 
-      <div class="tab-content">
+      <div class="tab-content py-4">
         <mat-spinner *ngIf="loading.exposure" diameter="40"></mat-spinner>
         <app-exposure-chart
           *ngIf="!loading.exposure"

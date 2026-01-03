@@ -194,7 +194,7 @@ import { SignalPerformance } from '../../../../core/services/performance.service
     }
 
     .stat-card.highlight {
-      background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+      background: linear-gradient(135deg, var(--color-accent-soft) 0%, var(--color-accent-softer) 100%);
     }
 
     .stat-main {
@@ -207,7 +207,7 @@ import { SignalPerformance } from '../../../../core/services/performance.service
     .stat-sub {
       margin-top: 8px;
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
       text-align: center;
     }
 
@@ -224,7 +224,8 @@ import { SignalPerformance } from '../../../../core/services/performance.service
 
     .stat-value {
       font-size: 20px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .stat-value.large {
@@ -233,11 +234,11 @@ import { SignalPerformance } from '../../../../core/services/performance.service
 
     .stat-label {
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .good {
-      color: #4CAF50;
+      color: var(--color-success);
     }
 
     .section-card {
@@ -247,7 +248,8 @@ import { SignalPerformance } from '../../../../core/services/performance.service
     .section-title {
       margin: 0 0 16px 0;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .returns-grid {
@@ -265,13 +267,13 @@ import { SignalPerformance } from '../../../../core/services/performance.service
     }
 
     .return-item.positive {
-      background: #E8F5E9;
-      color: #2E7D32;
+      background: var(--color-success-soft);
+      color: var(--color-success);
     }
 
     .return-item.negative {
-      background: #FFEBEE;
-      color: #C62828;
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
     }
 
     .return-content {
@@ -286,7 +288,7 @@ import { SignalPerformance } from '../../../../core/services/performance.service
 
     .return-value {
       font-size: 20px;
-      font-weight: 500;
+      font-weight: 600;
     }
 
     .holding-grid {
@@ -302,13 +304,13 @@ import { SignalPerformance } from '../../../../core/services/performance.service
 
     .holding-value {
       font-size: 28px;
-      font-weight: 500;
-      color: #2196F3;
+      font-weight: 600;
+      color: var(--color-accent);
     }
 
     .holding-label {
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .exit-chips {
@@ -326,11 +328,11 @@ import { SignalPerformance } from '../../../../core/services/performance.service
     }
 
     .positive {
-      color: #4CAF50;
+      color: var(--color-success);
     }
 
     .negative {
-      color: #F44336;
+      color: var(--color-danger);
     }
 
     .empty-card {
@@ -339,7 +341,7 @@ import { SignalPerformance } from '../../../../core/services/performance.service
       align-items: center;
       justify-content: center;
       padding: 48px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .empty-card mat-icon {
@@ -351,7 +353,7 @@ import { SignalPerformance } from '../../../../core/services/performance.service
 
     .empty-hint {
       font-size: 12px;
-      color: #999;
+      color: var(--color-muted);
     }
 
     @media (max-width: 960px) {

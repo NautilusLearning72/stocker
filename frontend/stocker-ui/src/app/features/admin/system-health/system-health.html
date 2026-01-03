@@ -1,22 +1,22 @@
-<div class="health-container">
-    <h2>System Status</h2>
+<div class="health-container space-y-4">
+    <h2 class="text-lg font-semibold text-text">System Status</h2>
 
-    <div class="sync-panel">
+    <div class="sync-panel flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-canvas px-4 py-3 shadow-subtle">
         <div class="sync-text">
-            <h3>Portfolio Sync</h3>
-            <p>Refresh holdings, orders, fills, and portfolio state from Alpaca.</p>
+            <h3 class="text-base font-semibold text-text">Portfolio Sync</h3>
+            <p class="text-sm text-muted">Refresh holdings, orders, fills, and portfolio state from Alpaca.</p>
         </div>
         <button mat-raised-button color="primary" (click)="syncPortfolio()" [disabled]="syncing">
             {{ syncing ? 'Syncing...' : 'Sync Now' }}
         </button>
     </div>
-    <p class="status-message" *ngIf="syncMessage">{{ syncMessage }}</p>
-    <p class="status-message error" *ngIf="syncError">{{ syncError }}</p>
+    <p class="status-message text-sm text-muted" *ngIf="syncMessage">{{ syncMessage }}</p>
+    <p class="status-message text-sm text-danger" *ngIf="syncError">{{ syncError }}</p>
 
-    <p class="status-message" *ngIf="loading">Checking system health...</p>
-    <p class="status-message error" *ngIf="errorMsg">{{ errorMsg }}</p>
+    <p class="status-message text-sm text-muted" *ngIf="loading">Checking system health...</p>
+    <p class="status-message text-sm text-danger" *ngIf="errorMsg">{{ errorMsg }}</p>
 
-    <div class="grid">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <mat-card *ngFor="let service of services" class="status-card" [class]="service.status">
             <mat-card-header>
                 <mat-icon mat-card-avatar *ngIf="service.status === 'healthy'"

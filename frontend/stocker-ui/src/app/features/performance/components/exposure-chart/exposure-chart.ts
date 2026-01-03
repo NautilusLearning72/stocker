@@ -162,10 +162,10 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
       justify-content: center;
     }
 
-    .exposure-card.gross .exposure-icon { background: #E3F2FD; color: #2196F3; }
-    .exposure-card.net .exposure-icon { background: #F3E5F5; color: #9C27B0; }
-    .exposure-card.long .exposure-icon { background: #E8F5E9; color: #4CAF50; }
-    .exposure-card.short .exposure-icon { background: #FFEBEE; color: #F44336; }
+    .exposure-card.gross .exposure-icon { background: var(--color-accent-soft); color: var(--color-accent); }
+    .exposure-card.net .exposure-icon { background: var(--color-accent-softer); color: var(--color-accent); }
+    .exposure-card.long .exposure-icon { background: var(--color-success-soft); color: var(--color-success); }
+    .exposure-card.short .exposure-icon { background: var(--color-danger-soft); color: var(--color-danger); }
 
     .exposure-content {
       display: flex;
@@ -174,12 +174,13 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
 
     .exposure-value {
       font-size: 24px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .exposure-label {
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .section-card {
@@ -189,7 +190,8 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
     .section-title {
       margin: 0 0 16px 0;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .stats-grid, .turnover-grid {
@@ -205,18 +207,19 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
 
     .stat-label, .turnover-label {
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .stat-value {
       font-size: 20px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .turnover-value {
       font-size: 28px;
-      font-weight: 500;
-      color: #2196F3;
+      font-weight: 600;
+      color: var(--color-accent);
     }
 
     .exposure-bars {
@@ -234,13 +237,13 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
     .bar-date {
       width: 80px;
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .bar-container {
       flex: 1;
       height: 20px;
-      background: #f5f5f5;
+      background: var(--color-canvas-subtle);
       border-radius: 4px;
       display: flex;
       overflow: hidden;
@@ -252,11 +255,11 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
     }
 
     .long-bar {
-      background: #4CAF50;
+      background: var(--color-success);
     }
 
     .short-bar {
-      background: #F44336;
+      background: var(--color-danger);
     }
 
     .bar-value {
@@ -272,7 +275,7 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
       gap: 24px;
       margin-top: 12px;
       font-size: 12px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .legend-item {
@@ -287,8 +290,8 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
       border-radius: 2px;
     }
 
-    .legend-color.long { background: #4CAF50; }
-    .legend-color.short { background: #F44336; }
+    .legend-color.long { background: var(--color-success); }
+    .legend-color.short { background: var(--color-danger); }
 
     .sector-list {
       display: flex;
@@ -310,14 +313,14 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
     .sector-bar-container {
       flex: 1;
       height: 16px;
-      background: #f5f5f5;
+      background: var(--color-canvas-subtle);
       border-radius: 4px;
       overflow: hidden;
     }
 
     .sector-bar {
       height: 100%;
-      background: #2196F3;
+      background: var(--color-accent);
       transition: width 0.3s;
     }
 
@@ -325,13 +328,14 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
       width: 50px;
       text-align: right;
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--color-text);
     }
 
     .sector-count {
       width: 30px;
       font-size: 11px;
-      color: #999;
+      color: var(--color-muted);
     }
 
     .empty-card {
@@ -340,7 +344,7 @@ import { ExposureAnalysis, ExposurePoint } from '../../../../core/services/perfo
       align-items: center;
       justify-content: center;
       padding: 48px;
-      color: #666;
+      color: var(--color-muted);
     }
 
     .empty-card mat-icon {
