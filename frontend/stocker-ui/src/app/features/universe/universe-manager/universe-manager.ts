@@ -72,8 +72,11 @@ export class UniverseManager implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadUniverses();
-    this.loadStrategyMapping();
+    // Defer initial loading to avoid ExpressionChangedAfterItHasBeenCheckedError on page refresh
+    setTimeout(() => {
+      this.loadUniverses();
+      this.loadStrategyMapping();
+    });
   }
 
   loadUniverses(): void {
@@ -85,16 +88,15 @@ export class UniverseManager implements OnInit {
           const preferred = universes.find((u) => u.is_global) ?? universes[0];
           this.selectedUniverseId = preferred.id;
         }
-        Promise.resolve().then(() => {
-          this.loading = false;
-          this.cdr.detectChanges();
-          this.loadUniverseDetail();
-        });
+        this.loading = false;
+        this.loadUniverseDetail();
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.loading = false;
         this.errorMsg = 'Failed to load universes';
         console.error(err);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -102,23 +104,28 @@ export class UniverseManager implements OnInit {
   loadUniverseDetail(): void {
     if (this.selectedUniverseId === undefined || this.selectedUniverseId === null) return;
     this.loading = true;
+    // Reset state synchronously
+    this.instrumentNames = {};
+    this.metrics = {};
+    this.members = [];
+    this.filteredMembers = [];
+    this.selectedMembers.clear();
+    this.memberFilter = '';
+
     this.universeService.get(this.selectedUniverseId).subscribe({
       next: (detail: UniverseDetail) => {
-        Promise.resolve().then(() => {
-          this.members = detail.members || [];
-          this.filteredMembers = [...this.members];
-          this.selectedMembers.clear();
-          this.memberFilter = '';
-          this.loading = false;
-          this.cdr.detectChanges();
-          this.loadMetrics();
-          this.loadNames(this.members);
-        });
+        this.members = detail.members || [];
+        this.filteredMembers = [...this.members];
+        this.loading = false;
+        this.loadMetrics();
+        this.loadNames(this.members);
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.loading = false;
         this.errorMsg = 'Failed to load universe details';
         console.error(err);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -126,10 +133,8 @@ export class UniverseManager implements OnInit {
   loadStrategyMapping(): void {
     this.universeService.getStrategyUniverse(this.strategyId).subscribe({
       next: (mapping: StrategyUniverse) => {
-        Promise.resolve().then(() => {
-          this.selectedStrategyUniverseId = mapping.universe_id ?? undefined;
-          this.cdr.detectChanges();
-        });
+        this.selectedStrategyUniverseId = mapping.universe_id ?? undefined;
+        this.cdr.detectChanges();
       },
       error: (err) => console.error('Failed to load strategy mapping', err),
     });
@@ -142,12 +147,17 @@ export class UniverseManager implements OnInit {
 
     this.universeService.addMembers(this.selectedUniverseId, symbols).subscribe({
       next: () => {
-        this.addSymbolsInput = '';
-        this.loadUniverseDetail();
+        // Defer state updates to a new tick to avoid NG0100 when clearing input
+        setTimeout(() => {
+          this.addSymbolsInput = '';
+          this.loadUniverseDetail();
+          this.cdr.detectChanges();
+        });
       },
       error: (err) => {
         this.errorMsg = 'Failed to add symbols';
         console.error(err);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -164,6 +174,7 @@ export class UniverseManager implements OnInit {
       error: (err) => {
         this.errorMsg = `Failed to remove ${symbol}`;
         console.error(err);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -177,9 +188,11 @@ export class UniverseManager implements OnInit {
       await Promise.all(removals);
       this.selectedMembers.clear();
       this.loadUniverseDetail();
+      this.cdr.detectChanges();
     } catch (err) {
       this.errorMsg = 'Failed to remove selected symbols';
       console.error(err);
+      this.cdr.detectChanges();
     }
   }
 
@@ -200,18 +213,22 @@ export class UniverseManager implements OnInit {
               console.error('Failed to add initial symbols', err);
             }
           }
-          this.newUniverseName = '';
-          this.newUniverseDescription = '';
-          this.newUniverseSymbolsInput = '';
-          this.universes.push(u);
-          this.selectedUniverseId = u.id;
-          this.selectedStrategyUniverseId = this.selectedStrategyUniverseId ?? u.id;
-          this.loadUniverseDetail();
-          this.cdr.detectChanges();
+          // Defer state updates to a new tick to avoid NG0100
+          setTimeout(() => {
+            this.newUniverseName = '';
+            this.newUniverseDescription = '';
+            this.newUniverseSymbolsInput = '';
+            this.universes.push(u);
+            this.selectedUniverseId = u.id;
+            this.selectedStrategyUniverseId = this.selectedStrategyUniverseId ?? u.id;
+            this.loadUniverseDetail();
+            this.cdr.detectChanges();
+          });
         },
         error: (err) => {
           this.errorMsg = 'Failed to create universe';
           console.error(err);
+          this.cdr.detectChanges();
         },
       });
   }
@@ -219,10 +236,13 @@ export class UniverseManager implements OnInit {
   assignStrategy(): void {
     if (!this.selectedStrategyUniverseId) return;
     this.universeService.setStrategyUniverse(this.strategyId, this.selectedStrategyUniverseId).subscribe({
-      next: () => {},
+      next: () => {
+        this.cdr.detectChanges();
+      },
       error: (err) => {
         this.errorMsg = 'Failed to assign strategy universe';
         console.error(err);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -246,6 +266,7 @@ export class UniverseManager implements OnInit {
     } else {
       this.selectedMembers.delete(symbol);
     }
+    this.cdr.detectChanges();
   }
 
   private parseSymbols(input: string): string[] {
@@ -261,10 +282,8 @@ export class UniverseManager implements OnInit {
       next: (rows: MetricStatus[]) => {
         const map: Record<string, MetricStatus> = {};
         rows.forEach((m) => (map[m.symbol] = m));
-        Promise.resolve().then(() => {
-          this.metrics = map;
-          this.cdr.detectChanges();
-        });
+        this.metrics = map;
+        this.cdr.detectChanges();
       },
       error: (err) => console.error('Failed to load metrics status', err),
     });
@@ -276,11 +295,9 @@ export class UniverseManager implements OnInit {
       next: (rows: InstrumentInfo[]) => {
         const map: Record<string, string> = {};
         rows.forEach((info) => (map[info.symbol] = info.name || info.symbol));
-        Promise.resolve().then(() => {
-          this.instrumentNames = map;
-          this.onFilterChange();
-          this.cdr.detectChanges();
-        });
+        this.instrumentNames = map;
+        this.onFilterChange();
+        this.cdr.detectChanges();
       },
       error: (err) => console.error('Failed to load instrument names', err),
     });
