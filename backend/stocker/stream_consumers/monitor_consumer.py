@@ -61,6 +61,9 @@ class MonitorConsumer(BaseStreamConsumer):
             consumer_group="monitors"
         )
         self._kill_switch_active = False
+        self._kill_switch_reason: Optional[str] = None
+        self._kill_switch_source: Optional[str] = None
+        self._kill_switch_triggered_at: Optional[str] = None
         self._last_nav: Optional[Decimal] = None
         self._session_start_nav: Optional[Decimal] = None
         self._current_date: Optional[date] = None
@@ -85,6 +88,8 @@ class MonitorConsumer(BaseStreamConsumer):
                 f"Failed to parse portfolio state: {e}"
             )
             return
+
+        await self._refresh_kill_switch_state(portfolio_id)
 
         # Track session start NAV for daily P&L calculation
         if self._current_date != event_date:
@@ -128,10 +133,15 @@ class MonitorConsumer(BaseStreamConsumer):
             self._kill_switch_active = True
 
             # Execute kill switch actions
-            await self._execute_kill_switch(portfolio_id, trigger_reason)
+            await self._execute_kill_switch(portfolio_id, trigger_reason, "auto")
 
-    async def _execute_kill_switch(self, portfolio_id: str, reason: str) -> None:
+    async def _execute_kill_switch(self, portfolio_id: str, reason: str, source: str) -> None:
         """Execute kill switch: cancel pending orders and halt trading."""
+        self._kill_switch_active = True
+        self._kill_switch_reason = reason
+        self._kill_switch_source = source
+        triggered_at = datetime.utcnow().isoformat()
+        self._kill_switch_triggered_at = triggered_at
 
         # 1. Cancel all pending orders
         cancelled_count = await self._cancel_pending_orders(portfolio_id)
@@ -150,8 +160,9 @@ class MonitorConsumer(BaseStreamConsumer):
                 f"kill_switch:{portfolio_id}",
                 json.dumps({
                     "active": True,
-                    "triggered_at": datetime.utcnow().isoformat(),
-                    "reason": reason
+                    "triggered_at": triggered_at,
+                    "reason": reason,
+                    "source": source,
                 })
             )
 
@@ -240,13 +251,40 @@ class MonitorConsumer(BaseStreamConsumer):
                 "drawdown": drawdown,
                 "daily_pnl_pct": daily_pnl_pct,
                 "kill_switch_active": self._kill_switch_active,
+                "kill_switch_reason": self._kill_switch_reason,
+                "kill_switch_source": self._kill_switch_source,
+                "triggered_at": self._kill_switch_triggered_at,
                 "timestamp": datetime.utcnow().isoformat()
             }
         }))
 
+    async def _refresh_kill_switch_state(self, portfolio_id: str) -> None:
+        """Sync kill switch state from Redis so manual changes reflect in UI."""
+        if not self.redis:
+            return
+
+        try:
+            kill_switch_data = await self.redis.get(f"kill_switch:{portfolio_id}")
+            if kill_switch_data:
+                data = json.loads(kill_switch_data)
+                self._kill_switch_active = bool(data.get("active", False))
+                self._kill_switch_reason = data.get("reason")
+                self._kill_switch_source = data.get("source")
+                self._kill_switch_triggered_at = data.get("triggered_at")
+            else:
+                self._kill_switch_active = False
+                self._kill_switch_reason = None
+                self._kill_switch_source = None
+                self._kill_switch_triggered_at = None
+        except Exception as exc:
+            logger.error(f"Error syncing kill switch state: {exc}")
+
     async def reset_kill_switch(self, portfolio_id: str) -> None:
         """Manual reset of kill switch (called via admin API)."""
         self._kill_switch_active = False
+        self._kill_switch_reason = None
+        self._kill_switch_source = None
+        self._kill_switch_triggered_at = None
 
         if self.redis:
             await self.redis.delete(f"kill_switch:{portfolio_id}")

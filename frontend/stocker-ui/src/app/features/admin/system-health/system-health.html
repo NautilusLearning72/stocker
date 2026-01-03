@@ -13,6 +13,41 @@
     <p class="status-message text-sm text-muted" *ngIf="syncMessage">{{ syncMessage }}</p>
     <p class="status-message text-sm text-danger" *ngIf="syncError">{{ syncError }}</p>
 
+    <div class="kill-switch-panel flex flex-col gap-3 rounded-md border border-border bg-canvas px-4 py-3 shadow-subtle">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="kill-switch-text">
+                <h3 class="text-base font-semibold text-text">Trading Kill Switch</h3>
+                <p class="text-sm text-muted">
+                    Emergency halt for order generation and broker execution. Auto triggers on daily loss threshold.
+                </p>
+            </div>
+            <div class="kill-switch-status" [class.active]="killSwitchActive" [class.inactive]="!killSwitchActive">
+                {{ killSwitchStatusText }}
+            </div>
+        </div>
+        <div class="text-sm text-muted" *ngIf="killSwitchActive">
+            <span class="font-semibold text-text">
+                {{ killSwitchSource === 'auto' ? 'Auto halt reason:' : 'Reason:' }}
+            </span>
+            {{ killSwitchReason || 'Reason not recorded.' }}
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <button mat-stroked-button color="warn" (click)="activateKillSwitch()"
+                [disabled]="killSwitchBusy || killSwitchActive">
+                Halt Trading
+            </button>
+            <button mat-stroked-button color="primary" (click)="resetKillSwitch()"
+                [disabled]="killSwitchBusy || !killSwitchActive">
+                Resume Trading
+            </button>
+            <span class="text-xs text-muted" *ngIf="killSwitchTriggeredAt">
+                Triggered {{ killSwitchTriggeredAt | date: 'MMM d, h:mm a' }}
+            </span>
+        </div>
+        <p class="status-message text-sm text-muted" *ngIf="killSwitchMessage">{{ killSwitchMessage }}</p>
+        <p class="status-message text-sm text-danger" *ngIf="killSwitchError">{{ killSwitchError }}</p>
+    </div>
+
     <p class="status-message text-sm text-muted" *ngIf="loading">Checking system health...</p>
     <p class="status-message text-sm text-danger" *ngIf="errorMsg">{{ errorMsg }}</p>
 

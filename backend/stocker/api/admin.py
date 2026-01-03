@@ -4,9 +4,13 @@ Admin API Router.
 Provides endpoints for managing strategy configuration.
 """
 
-from typing import Dict, List, Optional, Literal
+import json
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Literal
+
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import text
+from sqlalchemy import text, select
 from redis.exceptions import ResponseError
 from pydantic import BaseModel
 
@@ -15,8 +19,10 @@ from stocker.services.portfolio_sync_service import PortfolioSyncService
 from stocker.core.database import AsyncSessionLocal
 from stocker.core.redis import get_async_redis, StreamNames
 from stocker.core.config import settings
+from stocker.models.order import Order
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ---------- Pydantic Schemas ----------
@@ -74,6 +80,27 @@ class PortfolioSyncResponse(BaseModel):
     holdings_refreshed: int
     portfolio_state_updated: bool
     synced_at: str
+
+
+class KillSwitchStatusResponse(BaseModel):
+    portfolio_id: str
+    active: bool
+    triggered_at: Optional[str] = None
+    reason: Optional[str] = None
+    source: Optional[Literal["auto", "manual"]] = None
+
+
+class KillSwitchActionRequest(BaseModel):
+    portfolio_id: str = "main"
+    reason: Optional[str] = None
+
+
+class KillSwitchResetRequest(BaseModel):
+    portfolio_id: str = "main"
+
+
+class KillSwitchActionResponse(KillSwitchStatusResponse):
+    cancelled_orders: int = 0
 
 
 # ---------- Endpoints ----------
@@ -274,6 +301,89 @@ async def get_system_health() -> List[ServiceHealth]:
     return services
 
 
+@router.get("/kill-switch/status", response_model=KillSwitchStatusResponse)
+async def get_kill_switch_status(portfolio_id: str = "main") -> KillSwitchStatusResponse:
+    try:
+        redis = await get_async_redis()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=_short_error(exc)) from exc
+
+    status = await _load_kill_switch_status(redis, portfolio_id)
+    return status
+
+
+@router.post("/kill-switch/activate", response_model=KillSwitchActionResponse)
+async def activate_kill_switch(body: KillSwitchActionRequest) -> KillSwitchActionResponse:
+    try:
+        redis = await get_async_redis()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=_short_error(exc)) from exc
+
+    existing = await _read_kill_switch(redis, body.portfolio_id)
+    if existing and existing.get("active", False):
+        return _build_kill_switch_action_response(body.portfolio_id, existing, 0)
+
+    reason = (body.reason or "").strip() or "Manual halt requested"
+    triggered_at = datetime.utcnow().isoformat()
+    state = {
+        "active": True,
+        "triggered_at": triggered_at,
+        "reason": reason,
+        "source": "manual",
+    }
+
+    await redis.set(_kill_switch_key(body.portfolio_id), json.dumps(state))
+    cancelled_orders = await _cancel_pending_orders(body.portfolio_id)
+
+    await _publish_alert(
+        redis,
+        "CRITICAL",
+        "KILL SWITCH ACTIVATED",
+        f"Reason: {reason}. Cancelled {cancelled_orders} pending orders. "
+        "Trading halted until manual override.",
+    )
+    await _publish_kill_switch_update(redis, body.portfolio_id, state, cancelled_orders)
+
+    logger.warning(
+        "Kill switch manually activated for %s (cancelled %s orders).",
+        body.portfolio_id,
+        cancelled_orders,
+    )
+
+    return _build_kill_switch_action_response(body.portfolio_id, state, cancelled_orders)
+
+
+@router.post("/kill-switch/reset", response_model=KillSwitchStatusResponse)
+async def reset_kill_switch(body: KillSwitchResetRequest) -> KillSwitchStatusResponse:
+    try:
+        redis = await get_async_redis()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=_short_error(exc)) from exc
+
+    await redis.delete(_kill_switch_key(body.portfolio_id))
+
+    await _publish_alert(
+        redis,
+        "INFO",
+        "Kill switch reset",
+        f"Kill switch for {body.portfolio_id} has been manually reset. Trading resumed.",
+    )
+    await _publish_kill_switch_update(
+        redis,
+        body.portfolio_id,
+        {
+            "active": False,
+            "triggered_at": None,
+            "reason": None,
+            "source": None,
+        },
+    )
+
+    logger.info("Kill switch reset for %s.", body.portfolio_id)
+
+    return KillSwitchStatusResponse(portfolio_id=body.portfolio_id, active=False)
+
+
 @router.post("/portfolio-sync", response_model=PortfolioSyncResponse)
 async def sync_portfolio(body: PortfolioSyncRequest) -> PortfolioSyncResponse:
     service = PortfolioSyncService()
@@ -310,3 +420,104 @@ def _status_for_idle(idle_ms: int) -> Literal["healthy", "warning", "error"]:
 
 def _short_error(exc: Exception) -> str:
     return str(exc).splitlines()[0] if str(exc) else "Unavailable"
+
+
+def _kill_switch_key(portfolio_id: str) -> str:
+    return f"kill_switch:{portfolio_id}"
+
+
+async def _read_kill_switch(redis, portfolio_id: str) -> Optional[Dict[str, Any]]:
+    raw = await redis.get(_kill_switch_key(portfolio_id))
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Failed to decode kill switch state for %s.", portfolio_id)
+        return None
+
+
+async def _load_kill_switch_status(redis, portfolio_id: str) -> KillSwitchStatusResponse:
+    data = await _read_kill_switch(redis, portfolio_id) or {}
+    active = bool(data.get("active", False))
+    return KillSwitchStatusResponse(
+        portfolio_id=portfolio_id,
+        active=active,
+        triggered_at=data.get("triggered_at") if active else None,
+        reason=data.get("reason") if active else None,
+        source=data.get("source") if active else None,
+    )
+
+
+def _build_kill_switch_action_response(
+    portfolio_id: str,
+    data: Dict[str, Any],
+    cancelled_orders: int,
+) -> KillSwitchActionResponse:
+    active = bool(data.get("active", False))
+    return KillSwitchActionResponse(
+        portfolio_id=portfolio_id,
+        active=active,
+        triggered_at=data.get("triggered_at") if active else None,
+        reason=data.get("reason") if active else None,
+        source=data.get("source") if active else None,
+        cancelled_orders=cancelled_orders,
+    )
+
+
+async def _cancel_pending_orders(portfolio_id: str) -> int:
+    cancelled = 0
+
+    async with AsyncSessionLocal() as session:
+        stmt = select(Order).where(
+            Order.portfolio_id == portfolio_id,
+            Order.status.in_(["NEW", "PENDING", "PENDING_EXECUTION"]),
+        )
+        result = await session.execute(stmt)
+        pending_orders = result.scalars().all()
+
+        for order in pending_orders:
+            order.status = "CANCELLED"
+            cancelled += 1
+
+        await session.commit()
+
+    return cancelled
+
+
+async def _publish_alert(redis, level: str, title: str, message: str) -> None:
+    await redis.xadd(
+        StreamNames.ALERTS,
+        {
+            "level": level,
+            "title": title,
+            "message": message,
+            "timestamp": datetime.utcnow().isoformat(),
+        },
+    )
+
+
+async def _publish_kill_switch_update(
+    redis,
+    portfolio_id: str,
+    state: Dict[str, Any],
+    cancelled_orders: Optional[int] = None,
+) -> None:
+    payload = {
+        "portfolio_id": portfolio_id,
+        "kill_switch_active": bool(state.get("active", False)),
+        "kill_switch_reason": state.get("reason"),
+        "kill_switch_source": state.get("source"),
+        "triggered_at": state.get("triggered_at"),
+    }
+    if cancelled_orders is not None:
+        payload["cancelled_orders"] = cancelled_orders
+    await redis.publish(
+        "ui-updates",
+        json.dumps(
+            {
+                "type": "kill_switch_update",
+                "payload": payload,
+            }
+        ),
+    )

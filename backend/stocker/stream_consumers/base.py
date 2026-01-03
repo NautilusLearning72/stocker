@@ -166,8 +166,9 @@ class BaseStreamConsumer(ABC):
             if kill_switch_data:
                 data = json.loads(kill_switch_data)
                 if data.get("active", False):
+                    source = data.get("source", "unknown")
                     logger.warning(
-                        f"Kill switch active for {portfolio_id}: {data.get('reason', 'unknown')}"
+                        f"Kill switch active for {portfolio_id}: {data.get('reason', 'unknown')} ({source})"
                     )
                     return True
         except Exception as e:
