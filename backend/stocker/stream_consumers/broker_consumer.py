@@ -1,26 +1,27 @@
 import asyncio
 import logging
 import uuid
-from typing import Dict, Any
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
-from stocker.stream_consumers.base import BaseStreamConsumer
-from stocker.core.config import settings
-from stocker.core.database import AsyncSessionLocal
-from stocker.core.redis import StreamNames
-from stocker.core.metrics import metrics
-from stocker.models.order import Order
-from stocker.models.fill import Fill
-from sqlalchemy.future import select
-from sqlalchemy.dialects.postgresql import insert
+from alpaca.common.exceptions import APIError
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockLatestTradeRequest
 
 # We might need Alpaca Client here if execution is real
 from alpaca.trading.client import TradingClient
+from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
 from alpaca.trading.requests import MarketOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderStatus
-from alpaca.data.historical import StockHistoricalDataClient
-from alpaca.data.requests import StockLatestTradeRequest
-from alpaca.common.exceptions import APIError
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.future import select
+
+from stocker.core.config import settings
+from stocker.core.database import AsyncSessionLocal
+from stocker.core.metrics import metrics
+from stocker.core.redis import StreamNames
+from stocker.models.fill import Fill
+from stocker.models.order import Order
+from stocker.stream_consumers.base import BaseStreamConsumer
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class BrokerConsumer(BaseStreamConsumer):
     Executes trades (or papers trades) via Broker API (Alpaca).
     Publishes 'fills'.
     """
-    
+
     def __init__(self):
         super().__init__(
             redis_url=settings.REDIS_URL,
@@ -39,7 +40,7 @@ class BrokerConsumer(BaseStreamConsumer):
         )
         self.mode = settings.BROKER_MODE # 'paper' or 'live'
         self.execution_type = settings.ORDER_EXECUTION_TYPE  # 'moo' or 'market'
-        
+
         # Initialize Alpaca Trading Client
         self.trading_client = TradingClient(
             api_key=settings.ALPACA_API_KEY,
@@ -53,10 +54,34 @@ class BrokerConsumer(BaseStreamConsumer):
         )
         self.fractional_enabled = settings.FRACTIONAL_SIZING_ENABLED
 
+    def _is_fractional_qty(self, qty: float) -> bool:
+        """Check if quantity has a fractional component."""
+        return abs(qty - round(qty)) > 1e-9
+
+    def _round_for_moo(self, qty: float, symbol: str) -> float:
+        """
+        Round quantity to whole shares for MOO orders.
+
+        Alpaca requires whole shares for OPG (market-on-open) orders.
+        Returns 0 if quantity rounds to less than 1 share.
+        """
+        if not self._is_fractional_qty(qty):
+            return qty
+
+        rounded = round(qty)  # Round to nearest whole
+        if rounded < 1:
+            logger.info(
+                f"Skipping {symbol}: quantity {qty:.4f} rounds to {rounded} shares (< 1 share minimum)"
+            )
+            return 0.0
+
+        logger.info(f"Rounded {symbol} qty from {qty:.4f} to {rounded} for MOO order (fractional not supported)")
+        return float(rounded)
+
     def _get_alpaca_position(self, symbol: str) -> float:
         """
         Get actual position quantity from Alpaca.
-        
+
         Returns 0.0 if no position exists.
         """
         try:
@@ -73,34 +98,69 @@ class BrokerConsumer(BaseStreamConsumer):
     def _validate_sell_order(self, symbol: str, qty: float) -> tuple[bool, float, str]:
         """
         Validate sell order against Alpaca position.
-        
-        Alpaca doesn't allow fractional short selling, but integer shorts are OK.
-        
+
+        Alpaca restrictions:
+        - Cannot short sell with fractional quantities
+        - Short sells must use whole shares
+
+        Strategy: Round short portion to whole shares instead of rejecting.
+
         Returns:
             (is_valid, adjusted_qty, reason)
         """
         actual_position = self._get_alpaca_position(symbol)
-        
+
         # Would this order result in a short position?
         resulting_position = actual_position - qty
-        
+
         if resulting_position >= 0:
-            # Staying long or flat — no restrictions
+            # Staying long or flat — no restrictions on fractional
             return True, qty, "ok"
-        
+
         # This would create/increase a short position
+        # Alpaca requires whole shares for short selling
+
         if self.fractional_enabled:
-            # Fractional mode: can't short at all, cap to flatten only
+            # In fractional mode with short selling:
+            # - Can sell fractional to flatten existing long position
+            # - Must round the short portion to whole shares
+
             if actual_position <= 0:
-                return False, 0.0, "Cannot short with fractional orders"
-            # Cap to close position only (no shorting)
-            logger.warning(
-                f"Capping {symbol} sell from {qty:.4f} to {actual_position:.4f} "
-                f"(fractional short selling not allowed)"
-            )
-            return True, actual_position, "capped_to_flatten"
+                # Already short or flat - round entire order to whole shares
+                int_qty = int(qty)
+                if int_qty <= 0:
+                    logger.info(
+                        f"Skipping {symbol} short: qty {qty:.4f} rounds to 0 shares"
+                    )
+                    return False, 0.0, "Fractional short quantity too small after rounding"
+                logger.warning(
+                    f"Rounding {symbol} short sell from {qty:.4f} to {int_qty} "
+                    f"(fractional short selling not allowed)"
+                )
+                return True, float(int_qty), "rounded_for_short"
+            else:
+                # Have long position - can sell fractional to flatten,
+                # but short portion must be whole shares
+                flatten_qty = actual_position  # Sell all current (can be fractional)
+                short_portion = qty - actual_position
+                rounded_short = int(short_portion)  # Round down
+
+                if rounded_short <= 0:
+                    # Only flatten, no short
+                    logger.warning(
+                        f"Capping {symbol} sell from {qty:.4f} to {flatten_qty:.4f} "
+                        f"(short portion {short_portion:.4f} rounds to 0)"
+                    )
+                    return True, flatten_qty, "capped_to_flatten"
+
+                adjusted_qty = flatten_qty + rounded_short
+                logger.warning(
+                    f"Adjusting {symbol} sell from {qty:.4f} to {adjusted_qty:.4f} "
+                    f"(short portion rounded from {short_portion:.4f} to {rounded_short})"
+                )
+                return True, adjusted_qty, "short_portion_rounded"
         else:
-            # Integer mode: short selling allowed, just round to integer
+            # Integer mode: short selling allowed, just ensure integer
             int_qty = int(qty)
             if int_qty <= 0:
                 return False, 0.0, "Quantity too small for integer order"
@@ -109,7 +169,7 @@ class BrokerConsumer(BaseStreamConsumer):
     def _is_market_open(self) -> tuple[bool, str]:
         """
         Check if the market is currently open for trading.
-        
+
         Returns:
             (is_open, status_message)
         """
@@ -126,15 +186,15 @@ class BrokerConsumer(BaseStreamConsumer):
             # Default to allowing order attempt if we can't check
             return True, "Unable to verify market hours"
 
-    async def process_message(self, message_id: str, data: Dict[str, Any]) -> None:
+    async def process_message(self, message_id: str, data: dict[str, Any]) -> None:
         order_internal_id = data.get("order_id")
         symbol = data.get("symbol")
         side = data.get("side")
         qty_str = data.get("qty")
-        
+
         if not all([order_internal_id, symbol, side, qty_str]):
             return
-            
+
         qty = float(qty_str)
 
         try:
@@ -142,19 +202,19 @@ class BrokerConsumer(BaseStreamConsumer):
         except ValueError:
             logger.error(f"Invalid order id: {order_internal_id}")
             return
-        
+
         # 1. Load Order and check kill switch before execution
         async with AsyncSessionLocal() as session:
             stmt = select(Order).where(Order.order_id == order_uuid)
             result = await session.execute(stmt)
             order_record = result.scalar_one_or_none()
-            
+
             if not order_record:
                 logger.error(f"Order {order_internal_id} not found in DB")
                 return
-            
+
             portfolio_id = str(order_record.portfolio_id)
-            
+
             # Check kill switch before submitting to broker
             if await self.is_kill_switch_active(portfolio_id):
                 logger.warning(
@@ -171,11 +231,11 @@ class BrokerConsumer(BaseStreamConsumer):
                     metadata={"reason": "kill_switch_active", "side": side}
                 )
                 return
-                
+
             if order_record.status != "NEW":
                 logger.warning(f"Order {order_internal_id} is already {order_record.status}, skipping execution")
                 return
-                
+
             order_record.status = "PENDING_EXECUTION"
             await session.commit()
 
@@ -183,7 +243,7 @@ class BrokerConsumer(BaseStreamConsumer):
         #    Alpaca doesn't allow short selling with fractional shares
         if side == "SELL":
             is_valid, adjusted_qty, reason = self._validate_sell_order(symbol, qty)
-            
+
             if not is_valid:
                 logger.warning(
                     f"Sell order for {symbol} rejected: {reason}"
@@ -204,7 +264,7 @@ class BrokerConsumer(BaseStreamConsumer):
                         o.status = "REJECTED"
                         await session.commit()
                 return
-            
+
             if adjusted_qty != qty:
                 logger.info(f"Adjusted {symbol} sell qty from {qty:.4f} to {adjusted_qty:.4f}")
                 # Emit adjustment metric
@@ -231,10 +291,48 @@ class BrokerConsumer(BaseStreamConsumer):
                 qty = adjusted_qty
 
         # 3. Determine TimeInForce based on execution type and market hours
+        #    Note: Alpaca requires whole shares for MOO (OPG) orders
         market_open, market_status = self._is_market_open()
-        
+
         if self.execution_type == "moo":
-            # Market-on-Open: always use OPG (executes at next market open)
+            # Market-on-Open: use OPG (executes at next market open)
+            # Alpaca constraint: OPG orders must use whole shares
+            if self._is_fractional_qty(qty):
+                original_qty = qty
+                qty = self._round_for_moo(qty, symbol)
+                if qty <= 0:
+                    # Quantity too small after rounding - skip order
+                    metrics.emit(
+                        metrics.CATEGORY_ORDER,
+                        "skipped_fractional",
+                        original_qty,
+                        symbol=symbol,
+                        metadata={"reason": "qty_rounds_to_zero", "side": side}
+                    )
+                    async with AsyncSessionLocal() as session:
+                        stmt = select(Order).where(Order.order_id == order_uuid)
+                        res = await session.execute(stmt)
+                        o = res.scalar_one_or_none()
+                        if o:
+                            o.status = "SKIPPED"
+                            await session.commit()
+                    return
+                # Update order qty in database
+                async with AsyncSessionLocal() as session:
+                    stmt = select(Order).where(Order.order_id == order_uuid)
+                    res = await session.execute(stmt)
+                    o = res.scalar_one_or_none()
+                    if o:
+                        o.qty = qty
+                        await session.commit()
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "qty_rounded_for_moo",
+                    qty,
+                    symbol=symbol,
+                    metadata={"original_qty": original_qty, "rounded_qty": qty, "side": side}
+                )
+
             time_in_force = TimeInForce.OPG
             if market_open:
                 logger.info(f"MOO order for {symbol} will execute at next open (market currently open)")
@@ -260,12 +358,12 @@ class BrokerConsumer(BaseStreamConsumer):
                         await session.commit()
                 return
             time_in_force = TimeInForce.DAY
-            
+
         # 4. Execute with Broker
         broker_order_id = None
         execution_price = 0.0
         filled_qty = 0
-        
+
         try:
             # Submit order with appropriate TimeInForce
             req = MarketOrderRequest(
@@ -308,7 +406,7 @@ class BrokerConsumer(BaseStreamConsumer):
                     if o:
                         o.status = "ACCEPTED"  # Queued for next open
                         await session.commit()
-                
+
                 # Emit metric for visibility
                 metrics.emit(
                     metrics.CATEGORY_ORDER,
@@ -322,12 +420,12 @@ class BrokerConsumer(BaseStreamConsumer):
                     }
                 )
                 return  # Don't wait for fill - will be handled by fill sync task
-            
+
             # For immediate market orders, poll for fill
             execution_price, filled_qty = await self._wait_for_fill(
                 broker_order_id, symbol, qty
             )
-            
+
         except Exception as e:
             logger.error(f"Broker execution failed for {symbol}: {e}")
             # Emit failure metric
@@ -350,8 +448,8 @@ class BrokerConsumer(BaseStreamConsumer):
 
         # 6. Generate Fill Record (idempotent insert)
         fill_id = f"alpaca:{broker_order_id}" if broker_order_id else f"local:{order_internal_id}"
-        fill_timestamp = datetime.now(timezone.utc)
-        
+        fill_timestamp = datetime.now(UTC)
+
         async with AsyncSessionLocal() as session:
             # Update Order to FILLED
             stmt = select(Order).where(Order.order_id == order_uuid)
@@ -363,7 +461,7 @@ class BrokerConsumer(BaseStreamConsumer):
                 logger.info(f"Order {order_internal_id} marked FILLED in database")
             else:
                 logger.error(f"Order {order_internal_id} not found when trying to mark FILLED")
-            
+
             # Insert fill once; safe to retry without duplicates.
             fill_stmt = insert(Fill).values(
                 fill_id=fill_id,
@@ -397,7 +495,7 @@ class BrokerConsumer(BaseStreamConsumer):
                 "broker_order_id": broker_order_id
             }
         )
-            
+
         # 7. Publish 'fill_created'
         await self.redis.xadd(StreamNames.FILLS, {
             "event_type": "fill_created",
@@ -425,7 +523,6 @@ class BrokerConsumer(BaseStreamConsumer):
         Raises Exception if order not filled within timeout.
         """
         import time
-        from alpaca.trading.enums import OrderStatus
 
         start_time = time.time()
 
@@ -490,5 +587,5 @@ if __name__ == "__main__":
             await consumer.start()
         except KeyboardInterrupt:
             await consumer.stop()
-    
+
     asyncio.run(main())
