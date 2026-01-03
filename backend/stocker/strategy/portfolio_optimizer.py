@@ -39,6 +39,13 @@ class RiskConfig:
     sentiment_enabled: bool = True
     regime_enabled: bool = True
     quality_enabled: bool = True
+    # Enhancement tuning parameters
+    min_lookback_return: float = 0.02  # Minimum for full conviction
+    conviction_scale_min: float = 0.3  # Minimum scaling for weak signals
+    sentiment_weight: float = 0.2  # How much sentiment affects signal
+    sentiment_contrarian: bool = False  # Fade extreme sentiment
+    regime_defensive_scale: float = 0.5  # Scale down in risk-off
+    breadth_threshold: float = 0.4  # Below this = risk-off
 
 @dataclass
 class TargetExposure:
@@ -71,7 +78,14 @@ class PortfolioOptimizer:
             conviction_enabled=config.conviction_enabled,
             sentiment_enabled=config.sentiment_enabled,
             regime_enabled=config.regime_enabled,
-            quality_enabled=config.quality_enabled
+            quality_enabled=config.quality_enabled,
+            # Tuning parameters
+            min_lookback_return=config.min_lookback_return,
+            conviction_scale_min=config.conviction_scale_min,
+            sentiment_weight=config.sentiment_weight,
+            sentiment_contrarian=config.sentiment_contrarian,
+            regime_defensive_scale=config.regime_defensive_scale,
+            breadth_threshold=config.breadth_threshold
         ))
 
     def compute_targets(

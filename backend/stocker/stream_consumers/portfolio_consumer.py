@@ -57,7 +57,14 @@ class PortfolioConsumer(BaseStreamConsumer):
             conviction_enabled=settings.CONVICTION_ENABLED,
             sentiment_enabled=settings.SENTIMENT_ENABLED,
             regime_enabled=settings.REGIME_ENABLED,
-            quality_enabled=settings.QUALITY_ENABLED
+            quality_enabled=settings.QUALITY_ENABLED,
+            # Enhancement tuning parameters
+            min_lookback_return=settings.MIN_LOOKBACK_RETURN,
+            conviction_scale_min=settings.CONVICTION_SCALE_MIN,
+            sentiment_weight=settings.SENTIMENT_WEIGHT,
+            sentiment_contrarian=settings.SENTIMENT_CONTRARIAN,
+            regime_defensive_scale=settings.REGIME_DEFENSIVE_SCALE,
+            breadth_threshold=settings.BREADTH_THRESHOLD
         ))
 
     async def _fetch_sentiment_data(
