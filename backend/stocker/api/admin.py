@@ -206,6 +206,7 @@ async def get_system_health() -> List[ServiceHealth]:
         ("Order Consumer", StreamNames.TARGETS, "order-managers"),
         ("Broker Consumer", StreamNames.ORDERS, "brokers"),
         ("Ledger Consumer", StreamNames.FILLS, "accountants"),
+        ("Performance Consumer", StreamNames.TARGETS, "performance-trackers"),
         ("Monitor Consumer", StreamNames.PORTFOLIO_STATE, "monitors"),
     ]
 

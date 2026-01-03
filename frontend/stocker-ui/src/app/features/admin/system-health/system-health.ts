@@ -67,6 +67,7 @@ export class SystemHealth implements OnInit {
       { name: 'Order Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
       { name: 'Broker Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
       { name: 'Ledger Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
+      { name: 'Performance Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
       { name: 'Monitor Consumer', status: 'error', last_heartbeat: 'Unavailable', message: 'Backend offline' },
     ];
   }

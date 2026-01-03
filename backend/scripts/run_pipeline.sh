@@ -144,6 +144,9 @@ echo "  ✓ Monitor Consumer (PID: $!)"
 poetry run python -m stocker.stream_consumers.exit_consumer > logs/exit_consumer.log 2>&1 &
 echo "  ✓ Exit Consumer (PID: $!)"
 
+poetry run python -m stocker.stream_consumers.performance_consumer > logs/performance_consumer.log 2>&1 &
+echo "  ✓ Performance Consumer (PID: $!)"
+
 # Wait for consumers to initialize
 sleep 2
 

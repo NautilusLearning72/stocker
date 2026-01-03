@@ -16,6 +16,8 @@ from stocker.models.portfolio_state import PortfolioState
 from stocker.models.order import Order
 from stocker.models.position_state import PositionState
 from stocker.models.daily_bar import DailyBar
+from stocker.models.signal import Signal
+from stocker.models.signal_performance import SignalPerformance
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 logger = logging.getLogger(__name__)
@@ -57,6 +59,126 @@ class LedgerConsumer(BaseStreamConsumer):
             return -1
         return 0
 
+    async def _find_entry_signal(
+        self,
+        session,
+        symbol: str,
+        entry_date: date,
+        direction: int
+    ) -> Optional[Signal]:
+        """Find the signal that triggered this position entry."""
+        # Find most recent signal on or before entry date
+        stmt = select(Signal).where(
+            Signal.symbol == symbol,
+            Signal.date <= entry_date
+        ).order_by(Signal.date.desc()).limit(1)
+
+        result = await session.execute(stmt)
+        signal = result.scalar_one_or_none()
+
+        if signal and signal.direction != direction:
+            logger.warning(
+                f"Signal direction mismatch for {symbol}: "
+                f"signal={signal.direction}, position={direction}"
+            )
+
+        return signal
+
+    async def _create_signal_performance(
+        self,
+        session,
+        portfolio_id: str,
+        symbol: str,
+        direction: int,
+        entry_date: date,
+        entry_price: float,
+        signal_date: date
+    ) -> None:
+        """Create SignalPerformance record for new position."""
+        # Create performance record
+        perf = SignalPerformance(
+            portfolio_id=portfolio_id,
+            symbol=symbol,
+            direction=direction,
+            signal_date=signal_date,
+            entry_date=entry_date,
+            entry_price=Decimal(str(entry_price)),
+            exit_date=None,  # Still open
+            exit_price=None,
+            holding_days=None,
+            realized_return=None,
+            is_winner=None,
+            exit_reason=None
+        )
+        session.add(perf)
+
+        logger.info(
+            f"Opened signal performance tracking: {symbol} {direction} @ {entry_price:.2f}"
+        )
+
+    async def _close_signal_performance(
+        self,
+        session,
+        portfolio_id: str,
+        symbol: str,
+        direction: int,
+        exit_date: date,
+        exit_price: float,
+        exit_reason: str = "position_closed"
+    ) -> None:
+        """Update SignalPerformance record when position closes."""
+        # Check Redis for exit reason override
+        if self.redis:
+            redis_reason = await self.redis.hget(
+                f"pending_exit_reasons:{portfolio_id}",
+                symbol
+            )
+            if redis_reason:
+                exit_reason = redis_reason.decode() if isinstance(redis_reason, bytes) else redis_reason
+                # Clean up Redis entry
+                await self.redis.hdel(
+                    f"pending_exit_reasons:{portfolio_id}",
+                    symbol
+                )
+
+        # Find open performance record
+        stmt = select(SignalPerformance).where(
+            SignalPerformance.portfolio_id == portfolio_id,
+            SignalPerformance.symbol == symbol,
+            SignalPerformance.direction == direction,
+            SignalPerformance.exit_date.is_(None)
+        ).order_by(SignalPerformance.entry_date.desc()).limit(1)
+
+        result = await session.execute(stmt)
+        perf = result.scalar_one_or_none()
+
+        if not perf:
+            logger.warning(
+                f"No open SignalPerformance found for {symbol} direction={direction}"
+            )
+            return
+
+        # Calculate metrics
+        entry_price_float = float(perf.entry_price)
+        holding_days = (exit_date - perf.entry_date).days
+
+        # Realized return (direction-adjusted)
+        price_return = (exit_price - entry_price_float) / entry_price_float
+        realized_return = price_return * direction  # Adjust for short positions
+
+        # Update record
+        perf.exit_date = exit_date
+        perf.exit_price = Decimal(str(exit_price))
+        perf.holding_days = holding_days
+        perf.realized_return = Decimal(str(realized_return))
+        perf.is_winner = realized_return > 0
+        perf.exit_reason = exit_reason
+
+        logger.info(
+            f"Closed signal performance: {symbol} {direction} "
+            f"return={realized_return:.2%} days={holding_days} reason={exit_reason}"
+        )
+
     async def _update_position_state(
         self,
         session,
@@ -71,6 +193,54 @@ class LedgerConsumer(BaseStreamConsumer):
         old_direction = self._direction_from_qty(old_qty)
         new_direction = self._direction_from_qty(new_qty)
 
+        # ============================================
+        # SIGNAL PERFORMANCE TRACKING
+        # ============================================
+        # Track position close
+        if new_direction == 0 and old_direction != 0:
+            await self._close_signal_performance(
+                session=session,
+                portfolio_id=portfolio_id,
+                symbol=symbol,
+                direction=old_direction,
+                exit_date=fill_date,
+                exit_price=trade_price,
+                exit_reason="position_closed"
+            )
+
+        # Track position flip (long->short or short->long)
+        if old_direction != 0 and new_direction != 0 and old_direction != new_direction:
+            # Close old direction
+            await self._close_signal_performance(
+                session=session,
+                portfolio_id=portfolio_id,
+                symbol=symbol,
+                direction=old_direction,
+                exit_date=fill_date,
+                exit_price=trade_price,
+                exit_reason="signal_flip"
+            )
+
+        # Track new position entry (new entry or flip)
+        if (old_direction == 0 and new_direction != 0) or \
+           (old_direction != 0 and new_direction != 0 and old_direction != new_direction):
+            # Find matching signal
+            signal = await self._find_entry_signal(session, symbol, fill_date, new_direction)
+            signal_date = signal.date if signal else fill_date
+
+            await self._create_signal_performance(
+                session=session,
+                portfolio_id=portfolio_id,
+                symbol=symbol,
+                direction=new_direction,
+                entry_date=fill_date,
+                entry_price=cost_basis or trade_price,
+                signal_date=signal_date
+            )
+
+        # ============================================
+        # POSITION STATE UPDATES (existing logic)
+        # ============================================
         stmt = select(PositionState).where(
             PositionState.portfolio_id == portfolio_id,
             PositionState.symbol == symbol,
