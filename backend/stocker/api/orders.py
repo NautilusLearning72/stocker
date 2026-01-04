@@ -38,6 +38,7 @@ class OrderSchema(BaseModel):
     type: str | None
     status: str | None
     broker_order_id: str | None
+    rejection_reason: str | None = None
     fills: list[FillSchema] = []
 
     class Config:

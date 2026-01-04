@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Date, Numeric, Uuid, TIME, TIMESTAMP, UniqueConstraint
+from sqlalchemy import Column, String, Date, Numeric, Uuid, TIME, TIMESTAMP, UniqueConstraint, Text
 from sqlalchemy.orm import relationship
 from stocker.core.database import Base
 from stocker.models.base import IdMixin, TimestampMixin
@@ -22,6 +22,7 @@ class Order(Base, IdMixin, TimestampMixin):
     type = Column(String(20), default="MOO")
     status = Column(String(20))
     broker_order_id = Column(String(100))
+    rejection_reason = Column(Text)
 
     # Relationship to executions
     fills = relationship("Fill", back_populates="order")

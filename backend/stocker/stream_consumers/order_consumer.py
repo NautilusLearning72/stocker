@@ -3,6 +3,7 @@ import logging
 import uuid
 from typing import Dict, Any
 from datetime import date
+from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 
@@ -116,6 +117,26 @@ class OrderConsumer(BaseStreamConsumer):
             holding = result.scalar_one_or_none()
             
             current_qty = float(holding.qty) if holding else 0.0
+
+            reserved_qty = 0.0
+            if current_qty > 0:
+                open_statuses = [
+                    "NEW",
+                    "PENDING",
+                    "PENDING_EXECUTION",
+                    "SUBMITTED",
+                    "ACCEPTED",
+                ]
+                reserved_stmt = select(func.coalesce(func.sum(Order.qty), 0)).where(
+                    Order.portfolio_id == portfolio_id,
+                    Order.symbol == symbol,
+                    Order.side == "SELL",
+                    Order.status.in_(open_statuses),
+                )
+                reserved_result = await session.execute(reserved_stmt)
+                reserved_qty = float(reserved_result.scalar() or 0.0)
+                if reserved_qty < 0:
+                    reserved_qty = 0.0
             
             # Estimate current price? We need price to convert exposure % to Qty
             # We can use DailyBar (latest available)
@@ -157,19 +178,33 @@ class OrderConsumer(BaseStreamConsumer):
             if qty_to_trade == 0:
                 return
 
+            available_qty = current_qty
+            if side == "SELL" and current_qty > 0:
+                available_qty = max(current_qty - reserved_qty, 0.0)
+                if available_qty <= 0:
+                    logger.info(
+                        f"Skipping {symbol} sell: available qty {available_qty:.4f} "
+                        f"(reserved {reserved_qty:.4f})"
+                    )
+                    metrics.order_skipped(symbol, "held_for_orders", abs(diff_notional))
+                    return
+
             # Prevent short selling: Don't sell what we don't have
             # (Unless short selling is explicitly enabled in settings)
             allow_short = settings.ALLOW_SHORT_SELLING
-            if side == "SELL" and current_qty <= 0 and not allow_short:
+            if side == "SELL" and available_qty <= 0 and not allow_short:
                 logger.info(f"Skipping short sell for {symbol} (current_qty={current_qty}, short selling disabled)")
                 metrics.order_skipped(symbol, "short_selling_disabled", abs(diff_notional))
                 return
 
             # Cap sell quantity to current holdings (can't sell more than we own)
-            if side == "SELL" and not allow_short and qty_to_trade > current_qty:
+            if side == "SELL" and current_qty > 0 and qty_to_trade > available_qty:
                 original_qty = qty_to_trade
-                qty_to_trade = self._calculate_trade_qty(current_qty) if self.fractional_enabled else float(int(current_qty))
-                logger.info(f"Capping {symbol} sell qty from {original_qty:.4f} to {qty_to_trade:.4f} (can't sell more than owned)")
+                qty_to_trade = self._calculate_trade_qty(available_qty) if self.fractional_enabled else float(int(available_qty))
+                logger.info(
+                    f"Capping {symbol} sell qty from {original_qty:.4f} to {qty_to_trade:.4f} "
+                    f"(available {available_qty:.4f}, reserved {reserved_qty:.4f})"
+                )
                 if qty_to_trade == 0:
                     return
 

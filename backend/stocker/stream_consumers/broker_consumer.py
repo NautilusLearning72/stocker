@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -186,6 +187,18 @@ class BrokerConsumer(BaseStreamConsumer):
             # Default to allowing order attempt if we can't check
             return True, "Unable to verify market hours"
 
+    def _format_broker_rejection(self, error: APIError) -> str:
+        payload = getattr(error, "error", None)
+        if isinstance(payload, dict):
+            return json.dumps(payload, sort_keys=True)
+        raw = str(error).strip()
+        if raw.startswith("{") and raw.endswith("}"):
+            try:
+                return json.dumps(json.loads(raw), sort_keys=True)
+            except json.JSONDecodeError:
+                return raw
+        return raw
+
     async def process_message(self, message_id: str, data: dict[str, Any]) -> None:
         order_internal_id = data.get("order_id")
         symbol = data.get("symbol")
@@ -222,6 +235,7 @@ class BrokerConsumer(BaseStreamConsumer):
                     f"{order_internal_id} for {symbol}"
                 )
                 order_record.status = "REJECTED"
+                order_record.rejection_reason = "kill_switch_active"
                 await session.commit()
                 metrics.emit(
                     metrics.CATEGORY_ORDER,
@@ -262,6 +276,7 @@ class BrokerConsumer(BaseStreamConsumer):
                     o = res.scalar_one_or_none()
                     if o:
                         o.status = "REJECTED"
+                        o.rejection_reason = reason
                         await session.commit()
                 return
 
@@ -426,6 +441,25 @@ class BrokerConsumer(BaseStreamConsumer):
                 broker_order_id, symbol, qty
             )
 
+        except APIError as e:
+            rejection_reason = self._format_broker_rejection(e)
+            logger.error(f"Broker rejected {symbol}: {rejection_reason}")
+            metrics.emit(
+                metrics.CATEGORY_ORDER,
+                "rejected",
+                qty,
+                symbol=symbol,
+                metadata={"reason": rejection_reason, "side": side}
+            )
+            async with AsyncSessionLocal() as session:
+                stmt = select(Order).where(Order.order_id == order_uuid)
+                res = await session.execute(stmt)
+                o = res.scalar_one_or_none()
+                if o:
+                    o.status = "REJECTED"
+                    o.rejection_reason = rejection_reason
+                    await session.commit()
+            return
         except Exception as e:
             logger.error(f"Broker execution failed for {symbol}: {e}")
             # Emit failure metric
@@ -443,6 +477,7 @@ class BrokerConsumer(BaseStreamConsumer):
                 o = res.scalar_one_or_none()
                 if o:
                     o.status = "FAILED"
+                    o.rejection_reason = str(e)
                     await session.commit()
             return
 
