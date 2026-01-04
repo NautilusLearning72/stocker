@@ -335,6 +335,33 @@ app.conf.beat_schedule = {
 | BacktestEngine class | `stocker/backtesting/backtest_engine.py` | Historical simulation |
 | CLI interface | `stocker/backtesting/cli.py` | Command-line runner |
 
+**Implementation Details**:
+
+```python
+# stocker/backtesting/cli.py
+import typer
+from typing import List, Optional
+from datetime import datetime
+from stocker.backtesting.backtest_engine import BacktestEngine, RiskConfig, SignalConfig
+from stocker.services.market_data.yfinance_provider import YFinanceProvider
+from stocker.core.config import settings
+
+app = typer.Typer()
+
+@app.command()
+def run(
+    symbols: List[str] = typer.Option(..., help="List of symbols"),
+    start_date: str = typer.Option("2020-01-01", help="Start date YYYY-MM-DD"),
+    end_date: str = typer.Option(datetime.today().strftime("%Y-%m-%d"), help="End date YYYY-MM-DD"),
+    target_vol: float = 0.10,
+    lookback: int = 126,
+    initial_capital: float = 100000.0,
+):
+    """Run backtest simulation."""
+    # ... setup and run ...
+    pass
+```
+
 **Key Metrics to Compute**:
 - Total return, CAGR
 - Volatility (annualized)
@@ -652,6 +679,27 @@ class BrokerAdapter(ABC):
 - [ ] Alpaca broker submits real orders
 - [ ] Positions tracked correctly with FIFO
 - [ ] NAV and P&L computed accurately
+
+---
+
+## Phase 5.5: Backtest Verification
+
+**Goal**: Verify the strategy implementation against TDD requirements using historical data.
+
+**Dependencies**: Phase 2 (Strategy), Phase 3 (Data), Phase 5 (Trading Pipeline code not strictly needed, but good to have)
+
+| Task | File | Description |
+|------|------|-------------|
+| Implement CLI | `stocker/backtesting/cli.py` | Runner for backtests |
+| Run SPY/TLT Validation | `tests/backtests/validation_std.sh` | Standard trend validation |
+| Run Robustness Tests | `tests/backtests/robustness.py` | Parameter sensitivity check |
+
+**Acceptance Criteria**:
+- [ ] Backtest runs successfully on 10 years of SPY/TLT/GLD data
+- [ ] Sharpe ratio > 0.6 (after costs)
+- [ ] Max drawdown within 10-15% range for 10% target vol
+- [ ] Inverse-vol weighting correctly reduces exposure during high vol
+
 
 ---
 

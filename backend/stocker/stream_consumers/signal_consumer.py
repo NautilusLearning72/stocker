@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from typing import Dict, Any
 from datetime import date, datetime, timezone
 import pandas as pd
@@ -7,6 +8,7 @@ from sqlalchemy.future import select
 
 from stocker.stream_consumers.base import BaseStreamConsumer
 from stocker.core.config import settings
+from stocker.core.metrics import metrics
 from stocker.core.database import AsyncSessionLocal
 from stocker.core.redis import StreamNames
 from stocker.models.daily_bar import DailyBar
@@ -69,6 +71,7 @@ class SignalConsumer(BaseStreamConsumer):
             # Process each symbol
             success_count = 0
             fail_count = 0
+            start_time = time.perf_counter()
             for symbol in symbols:
                 try:
                     await self._process_symbol(symbol, target_date)
@@ -76,6 +79,15 @@ class SignalConsumer(BaseStreamConsumer):
                 except Exception as e:
                     fail_count += 1
                     logger.error(f"Failed to process {symbol}: {e}")
+
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            metrics.batch_processed(
+                stage="signal_generation",
+                count=len(symbols),
+                success=success_count,
+                failed=fail_count,
+                duration_ms=duration_ms,
+            )
 
             logger.info(f"Batch processing complete: {success_count} succeeded, {fail_count} failed")
 
