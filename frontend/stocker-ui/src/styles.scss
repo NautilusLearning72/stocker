@@ -1,63 +1,109 @@
 
 // Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+// GitHub Design System
 :root {
-  --color-canvas: #ffffff;
-  --color-canvas-subtle: #f6f8fa;
-  --color-border: #d0d7de;
-  --color-text: #24292f;
-  --color-muted: #57606a;
-  --color-accent: #0969da;
-  --color-success: #1a7f37;
-  --color-danger: #d1242f;
-  --color-warning: #9a6700;
+  // GitHub Dark Theme Colors
+  --color-canvas-default: #0d1117;
+  --color-canvas-subtle: #161b22;
+  --color-canvas-inset: #010409;
+  --color-canvas: #0d1117;
 
-  --color-accent-soft: #ddf4ff;
-  --color-accent-softer: #f1f8ff;
-  --color-success-soft: #dafbe1;
-  --color-success-muted: #c6f6d5;
-  --color-warning-soft: #fff8c5;
-  --color-warning-muted: #fff1a8;
-  --color-danger-soft: #ffebe9;
-  --color-danger-muted: #ffdcd5;
+  --color-border-default: #30363d;
+  --color-border-muted: #21262d;
+  --color-border: #30363d;
 
-  --color-accent-ring: rgba(9, 105, 218, 0.2);
-  --color-accent-ghost: rgba(9, 105, 218, 0.08);
-  --color-overlay: rgba(246, 248, 250, 0.85);
-  --color-tooltip-bg: rgba(33, 33, 33, 0.95);
-  --color-tooltip-text: #ffffff;
+  --color-fg-default: #e6edf3;
+  --color-fg-muted: #8d96a0;
+  --color-fg-subtle: #656d76;
+  --color-text: #e6edf3;
+  --color-muted: #8d96a0;
 
-  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', 'Helvetica',
-    'Arial', 'Apple Color Emoji', 'Segoe UI Emoji';
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-    'Courier New', monospace;
+  // Accent colors
+  --color-accent-fg: #4493f8;
+  --color-accent-emphasis: #1f6feb;
+  --color-accent-muted: #388bfd26;
+  --color-accent-subtle: #388bfd1a;
+  --color-accent: #4493f8;
+
+  // Status colors
+  --color-success-fg: #3fb950;
+  --color-success-emphasis: #238636;
+  --color-success-muted: #2ea04326;
+  --color-success-subtle: #2ea0431a;
+  --color-success: #3fb950;
+
+  --color-danger-fg: #f85149;
+  --color-danger-emphasis: #da3633;
+  --color-danger-muted: #f8514926;
+  --color-danger-subtle: #f851491a;
+  --color-danger: #f85149;
+
+  --color-warning-fg: #d29922;
+  --color-warning-emphasis: #9e6a03;
+  --color-warning-muted: #d2992226;
+  --color-warning-subtle: #d299221a;
+  --color-warning: #d29922;
+
+  // UI colors
+  --color-btn-bg: #21262d;
+  --color-btn-border: #30363d;
+  --color-btn-shadow: 0 0 transparent;
+  --color-btn-hover-bg: #30363d;
+  --color-btn-hover-border: #8b949e;
+
+  --color-btn-primary-bg: #238636;
+  --color-btn-primary-border: #2ea04326;
+  --color-btn-primary-hover-bg: #2ea043;
+
+  // Additional semantic colors
+  --color-canvas-elevated: #161b22;
+  --color-accent-soft: #388bfd1a;
+  --color-accent-softer: #388bfd0d;
+  --color-success-soft: #2ea0431a;
+  --color-success-muted: #2ea04326;
+  --color-warning-soft: #d299221a;
+  --color-warning-muted: #d2992226;
+  --color-danger-soft: #f851491a;
+  --color-danger-muted: #f8514926;
+
+  --color-accent-ring: rgba(68, 147, 248, 0.4);
+  --color-accent-ghost: rgba(68, 147, 248, 0.1);
+  --color-overlay: rgba(1, 4, 9, 0.8);
+  --color-tooltip-bg: #161b22;
+  --color-tooltip-text: #e6edf3;
+
+  // Typography - GitHub uses system fonts
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
   --font-size-xs: 12px;
-  --font-size-sm: 13px;
+  --font-size-sm: 14px;
   --font-size-base: 14px;
   --font-size-lg: 16px;
-  --font-size-xl: 18px;
-  --font-size-2xl: 20px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
 
   --line-height-base: 1.5;
-  --line-height-tight: 1.3;
+  --line-height-tight: 1.25;
 
-  --radius-sm: 4px;
+  // Spacing & borders - GitHub style
+  --radius-sm: 3px;
   --radius-md: 6px;
   --radius-lg: 8px;
 
-  --shadow-subtle: 0 1px 0 rgba(27, 31, 36, 0.04);
-  --shadow-popover: 0 8px 24px rgba(27, 31, 36, 0.12);
-  --shadow-focus: 0 0 0 2px var(--color-accent-ring);
+  // Shadows - GitHub uses subtle shadows
+  --shadow-subtle: 0 0 transparent;
+  --shadow-sm: 0 1px 0 rgba(1, 4, 9, 0.04);
+  --shadow-md: 0 3px 6px rgba(1, 4, 9, 0.12), 0 1px 3px rgba(1, 4, 9, 0.08);
+  --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.2);
+  --shadow-popover: 0 8px 24px rgba(1, 4, 9, 0.12);
+  --shadow-focus: 0 0 0 3px var(--color-accent-ring);
 }
 
 html {
@@ -66,104 +112,47 @@ html {
     color: (
       primary: mat.$blue-palette,
       tertiary: mat.$blue-palette,
-      theme-type: light,
+      theme-type: dark,
     ),
-    typography: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "Helvetica", "Arial", "Apple Color Emoji", "Segoe UI Emoji"',
+    typography: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
     density: -1,
   ));
 }
 
 body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme.
-  color-scheme: light;
-
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--color-canvas);
-  color: var(--color-text);
+  color-scheme: dark;
+  background-color: var(--color-canvas-default);
+  color: var(--color-fg-default);
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
-
-  // Reset the user agent margin.
   margin: 0;
   height: 100%;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-canvas: #0d1117;
-    --color-canvas-subtle: #161b22;
-    --color-border: #30363d;
-    --color-text: #c9d1d9;
-    --color-muted: #8b949e;
-    --color-accent: #2f81f7;
-    --color-success: #3fb950;
-    --color-danger: #f85149;
-    --color-warning: #d29922;
-
-    --color-accent-soft: #0b2d4f;
-    --color-accent-softer: #0f1f33;
-    --color-success-soft: #0f2d1a;
-    --color-success-muted: #153d25;
-    --color-warning-soft: #3d2f10;
-    --color-warning-muted: #4a3a14;
-    --color-danger-soft: #3b0b0b;
-    --color-danger-muted: #4a1414;
-
-    --color-accent-ring: rgba(47, 129, 247, 0.3);
-    --color-accent-ghost: rgba(47, 129, 247, 0.12);
-    --color-overlay: rgba(13, 17, 23, 0.85);
-    --color-tooltip-bg: rgba(22, 27, 34, 0.95);
-    --color-tooltip-text: #c9d1d9;
-
-    --shadow-subtle: 0 1px 0 rgba(255, 255, 255, 0.06);
-    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.5);
-    --shadow-focus: 0 0 0 2px var(--color-accent-ring);
-  }
-
-  html {
-    @include mat.theme((
-      color: (
-        primary: mat.$blue-palette,
-        tertiary: mat.$blue-palette,
-        theme-type: dark,
-      ),
-      typography: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "Helvetica", "Arial", "Apple Color Emoji", "Segoe UI Emoji"',
-      density: -1,
-    ));
-  }
-
-  body {
-    color-scheme: dark;
-  }
-}
-
 :root {
   @include mat.theme-overrides((
-    primary: var(--color-accent),
+    primary: var(--color-accent-emphasis),
     on-primary: #ffffff,
-    primary-container: var(--color-accent-soft),
+    primary-container: var(--color-accent-subtle),
     on-primary-container: var(--color-text),
     secondary: var(--color-muted),
     on-secondary: #ffffff,
-    tertiary: var(--color-accent),
+    tertiary: var(--color-accent-emphasis),
     on-tertiary: #ffffff,
-    surface: var(--color-canvas),
+    surface: var(--color-canvas-subtle),
     on-surface: var(--color-text),
-    surface-container-low: var(--color-canvas-subtle),
+    surface-container-low: var(--color-canvas-default),
     surface-container: var(--color-canvas-subtle),
-    outline: var(--color-border),
-    outline-variant: var(--color-border),
+    outline: var(--color-border-default),
+    outline-variant: var(--color-border-muted),
     error: var(--color-danger),
     on-error: #ffffff
   ));
 }
 
 a {
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   text-decoration: none;
 
   &:hover {
@@ -178,103 +167,268 @@ textarea,
 select,
 [tabindex]:not([tabindex='-1']) {
   &:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-accent-fg);
+    outline-offset: -2px;
+    box-shadow: none;
   }
 }
 
+// GitHub-style cards
 .mat-mdc-card {
-  border: 1px solid var(--color-border);
+  background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-subtle);
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: var(--color-border-muted);
+  }
 }
 
 .mat-mdc-card-header {
-  padding: 12px 16px 0;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border-muted);
 }
 
 .mat-mdc-card-content {
-  padding: 12px 16px 16px;
+  padding: 16px;
+}
+
+.mat-mdc-card-title {
+  color: var(--color-fg-default);
+  font-size: var(--font-size-base);
+  font-weight: 600;
 }
 
 .mat-mdc-card-subtitle {
-  color: var(--color-muted);
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-sm);
 }
 
+// GitHub-style buttons
 .mat-mdc-button,
 .mat-mdc-outlined-button,
 .mat-mdc-unelevated-button,
 .mat-mdc-raised-button {
   border-radius: var(--radius-md);
-  font-weight: 600;
+  font-weight: 500;
+  font-size: var(--font-size-sm);
   letter-spacing: 0;
   text-transform: none;
+  transition: all 0.2s ease;
+}
+
+.mat-mdc-button {
+  color: var(--color-fg-muted);
+
+  &:hover {
+    color: var(--color-fg-default);
+    background: var(--color-btn-hover-bg);
+  }
+}
+
+.mat-mdc-outlined-button {
+  border: 1px solid var(--color-btn-border);
+  background: var(--color-btn-bg);
+  color: var(--color-fg-default);
+
+  &:hover {
+    background: var(--color-btn-hover-bg);
+    border-color: var(--color-btn-hover-border);
+  }
 }
 
 .mat-mdc-unelevated-button.mat-primary,
 .mat-mdc-raised-button.mat-primary {
-  background: var(--color-accent);
+  background: var(--color-btn-primary-bg);
   color: #ffffff;
-  box-shadow: none;
+  border: 1px solid var(--color-btn-primary-border);
+  box-shadow: var(--color-btn-shadow);
+
+  &:hover {
+    background: var(--color-btn-primary-hover-bg);
+  }
 }
 
 .mat-mdc-unelevated-button.mat-warn,
 .mat-mdc-raised-button.mat-warn {
-  background: var(--color-danger);
+  background: var(--color-danger-emphasis);
   color: #ffffff;
-  box-shadow: none;
-}
-
-.mat-mdc-outlined-button {
-  border-color: var(--color-border);
+  box-shadow: var(--color-btn-shadow);
 }
 
 .mat-mdc-icon-button {
-  color: var(--color-muted);
+  color: var(--color-fg-muted);
+
+  &:hover {
+    color: var(--color-fg-default);
+    background: var(--color-btn-hover-bg);
+  }
 }
 
-.mat-mdc-icon-button:hover {
-  color: var(--color-text);
-}
-
+// GitHub-style tables
 .mat-mdc-table {
-  background: var(--color-canvas);
-}
-
-.mat-mdc-header-row,
-.mat-mdc-row {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.mat-mdc-row:hover {
   background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.mat-mdc-header-row {
+  background: var(--color-canvas-subtle);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.mat-mdc-row {
+  border-bottom: 1px solid var(--color-border-muted);
+  transition: background 0.1s ease;
+
+  &:hover {
+    background: var(--color-canvas-default);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .mat-mdc-header-cell {
-  color: var(--color-muted);
+  color: var(--color-fg-default);
   font-weight: 600;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 16px;
 }
 
+.mat-mdc-cell {
+  color: var(--color-fg-default);
+  font-size: var(--font-size-sm);
+  padding: 12px 16px;
+}
+
+// GitHub-style tabs
 .mat-mdc-tab-group {
-  --mat-tab-header-divider-color: var(--color-border);
+  --mat-tab-header-divider-color: var(--color-border-default);
+  background: transparent;
 }
 
-.mat-mdc-tab .mdc-tab__text-label {
-  font-weight: 600;
+.mat-mdc-tab-header {
+  border-bottom: 1px solid var(--color-border-default);
 }
 
-.mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
-  color: var(--color-text);
+.mat-mdc-tab {
+  color: var(--color-fg-muted);
+
+  .mdc-tab__text-label {
+    font-weight: 400;
+    font-size: var(--font-size-sm);
+  }
+
+  &:hover {
+    color: var(--color-fg-default);
+  }
 }
 
+.mat-mdc-tab.mdc-tab--active {
+  .mdc-tab__text-label {
+    color: var(--color-fg-default);
+    font-weight: 600;
+  }
+}
+
+.mat-mdc-tab-body-content {
+  background: transparent;
+}
+
+// GitHub-style form fields
 .mat-mdc-form-field {
-  --mdc-outlined-text-field-outline-color: var(--color-border);
-  --mdc-outlined-text-field-hover-outline-color: var(--color-border);
-  --mdc-outlined-text-field-focus-outline-color: var(--color-accent);
-  --mdc-outlined-text-field-container-color: var(--color-canvas);
-  --mdc-outlined-text-field-label-text-color: var(--color-muted);
-  --mdc-outlined-text-field-focus-label-text-color: var(--color-accent);
-  --mdc-outlined-text-field-input-text-color: var(--color-text);
-  --mat-form-field-container-height: 36px;
+  --mdc-outlined-text-field-outline-color: var(--color-border-default);
+  --mdc-outlined-text-field-hover-outline-color: var(--color-border-muted);
+  --mdc-outlined-text-field-focus-outline-color: var(--color-accent-fg);
+  --mdc-outlined-text-field-container-color: var(--color-canvas-inset);
+  --mdc-outlined-text-field-label-text-color: var(--color-fg-muted);
+  --mdc-outlined-text-field-focus-label-text-color: var(--color-accent-fg);
+  --mdc-outlined-text-field-input-text-color: var(--color-fg-default);
+  --mat-form-field-container-height: 32px;
 }
-/* You can add global styles to this file, and also import other style files */
+
+.mat-mdc-text-field-wrapper {
+  background: var(--color-canvas-inset);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+
+  &:hover {
+    border-color: var(--color-border-muted);
+  }
+}
+
+// Utility classes
+.divider {
+  height: 1px;
+  background: var(--color-border-muted);
+  margin: 16px 0;
+}
+
+// GitHub-style badges
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 2em;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+
+  &.badge-success {
+    background: var(--color-success-muted);
+    color: var(--color-success-fg);
+  }
+
+  &.badge-danger {
+    background: var(--color-danger-muted);
+    color: var(--color-danger-fg);
+  }
+
+  &.badge-warning {
+    background: var(--color-warning-muted);
+    color: var(--color-warning-fg);
+  }
+
+  &.badge-accent {
+    background: var(--color-accent-muted);
+    color: var(--color-accent-fg);
+  }
+}
+
+// Scrollbar styling (GitHub-like)
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-canvas-default);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: 5px;
+
+  &:hover {
+    background: var(--color-border-muted);
+  }
+}
+
+// GitHub counter style
+.Counter {
+  display: inline-block;
+  padding: 2px 5px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-fg-default);
+  background-color: var(--color-canvas-inset);
+  border: 1px solid var(--color-border-default);
+  border-radius: 2em;
+}

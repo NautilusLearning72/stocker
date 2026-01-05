@@ -1,0 +1,102 @@
+// GitHub Primer utilities
+.container-lg {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.p-responsive {
+  padding: 24px;
+}
+
+.mt-3 { margin-top: 16px !important; }
+.mt-4 { margin-top: 24px !important; }
+.mt-5 { margin-top: 32px !important; }
+
+// GitHub Subhead component
+.Subhead {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border-muted);
+}
+
+.Subhead-heading {
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--color-fg-default);
+  margin: 0;
+}
+
+.Subhead-description {
+  font-size: 14px;
+  color: var(--color-fg-muted);
+}
+
+// GitHub Box component
+.Box {
+  background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.Box-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--color-canvas-subtle);
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+}
+
+.Box-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-fg-default);
+  margin: 0;
+}
+
+.Box-body {
+  padding: 16px;
+}
+
+// GitHub tabs styling
+.github-tabs {
+  ::ng-deep {
+    .mat-mdc-tab-header {
+      background: transparent;
+      border-bottom: 1px solid var(--color-border-default);
+      padding: 0 16px;
+    }
+
+    .mat-mdc-tab {
+      min-width: 0;
+      padding: 0 16px;
+      height: 48px;
+      color: var(--color-fg-muted);
+
+      &:hover {
+        color: var(--color-fg-default);
+      }
+    }
+
+    .mat-mdc-tab.mdc-tab--active {
+      .mdc-tab__text-label {
+        color: var(--color-fg-default);
+      }
+    }
+
+    .mat-mdc-tab-body-wrapper {
+      padding: 0;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .p-responsive {
+    padding: 16px;
+  }
+
+  .Subhead-heading {
+    font-size: 20px;
+  }
+}

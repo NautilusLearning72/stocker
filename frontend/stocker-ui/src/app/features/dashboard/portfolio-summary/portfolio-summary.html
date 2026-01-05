@@ -1,16 +1,34 @@
-<div class="summary-grid grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-    <mat-card *ngFor="let metric of metrics" class="metric-card">
-        <mat-card-header>
-            <mat-card-title class="text-sm font-semibold text-muted">{{ metric.label }}</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-            <div class="value">
-                <ng-container [ngSwitch]="metric.format">
-                    <span *ngSwitchCase="'currency'">{{ metric.value | currency:'USD':'symbol':(metric.digits || '1.2-2') }}</span>
-                    <span *ngSwitchCase="'percent'">{{ metric.value | number:(metric.digits || '1.2-2') }}%</span>
-                    <span *ngSwitchDefault>{{ metric.value }}</span>
-                </ng-container>
+<div class="Box">
+    <div class="Box-header d-flex flex-items-center flex-justify-between">
+        <h3 class="Box-title">Key Metrics</h3>
+    </div>
+    <div class="Box-row">
+        <div class="stats-grid">
+            <div *ngFor="let metric of metrics" class="stat-card">
+                <div class="stat-label">{{ metric.label }}</div>
+                <div class="stat-value">
+                    <ng-container [ngSwitch]="metric.format">
+                        <span *ngSwitchCase="'currency'" class="text-mono">{{ metric.value | currency:'USD':'symbol':(metric.digits || '1.2-2') }}</span>
+                        <span *ngSwitchCase="'percent'" class="text-mono">{{ metric.value | number:(metric.digits || '1.2-2') }}%</span>
+                        <span *ngSwitchDefault class="text-mono">{{ metric.value }}</span>
+                    </ng-container>
+                </div>
+                <div class="stat-trend" *ngIf="metric.format === 'percent'">
+                    <span *ngIf="metric.value > 0" class="text-success">
+                        <svg class="octicon" height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 3.5 L12 7.5 L10.5 9 L8 6.5 L5.5 9 L4 7.5 Z"/>
+                        </svg>
+                        Positive
+                    </span>
+                    <span *ngIf="metric.value < 0" class="text-danger">
+                        <svg class="octicon" height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 12.5 L4 8.5 L5.5 7 L8 9.5 L10.5 7 L12 8.5 Z"/>
+                        </svg>
+                        Negative
+                    </span>
+                    <span *ngIf="metric.value === 0" class="text-muted">No change</span>
+                </div>
             </div>
-        </mat-card-content>
-    </mat-card>
+        </div>
+    </div>
 </div>
