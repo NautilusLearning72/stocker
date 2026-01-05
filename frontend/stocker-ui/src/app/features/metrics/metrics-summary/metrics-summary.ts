@@ -96,4 +96,72 @@ export class MetricsSummary {
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count);
   }
+
+  getMetrics() {
+    if (!this.summary) return [];
+
+    return [
+      {
+        label: 'Total Events',
+        value: this.summary.total_events.toLocaleString(),
+        help: 'Total number of events in the selected time period'
+      },
+      {
+        label: 'Orders Created',
+        value: this.summary.orders_created,
+        badge: 'success',
+        badgeText: '✓',
+        help: 'Orders successfully created and submitted'
+      },
+      {
+        label: 'Orders Skipped',
+        value: this.summary.orders_skipped,
+        badge: this.summary.orders_skipped > 0 ? 'warning' : null,
+        badgeText: '!',
+        help: 'Orders skipped due to various constraints'
+      },
+      {
+        label: 'Confirmation Rate',
+        value: this.summary.confirmation_rate !== null
+          ? `${(this.summary.confirmation_rate * 100).toFixed(1)}%`
+          : 'N/A',
+        help: 'Percentage of signals that passed confirmation'
+      },
+      {
+        label: 'Trailing Stops',
+        value: this.summary.trailing_stops_triggered,
+        badge: this.summary.trailing_stops_triggered > 0 ? 'warning' : null,
+        badgeText: '!',
+        help: 'Number of trailing stop exits triggered'
+      },
+      {
+        label: 'Sector Caps',
+        value: this.summary.sector_caps_applied,
+        help: 'Positions limited by sector exposure caps'
+      },
+      {
+        label: 'Correlation Throttles',
+        value: this.summary.correlation_throttles,
+        help: 'Positions throttled due to correlation limits'
+      }
+    ];
+  }
+
+  getCategories() {
+    if (!this.summary?.by_category) return [];
+
+    const categoryMap: Record<string, { name: string; type: string }> = {
+      signal: { name: 'Signals', type: 'primary' },
+      exit: { name: 'Exits', type: 'warning' },
+      diversification: { name: 'Diversification', type: 'default' },
+      order: { name: 'Orders', type: 'success' },
+      risk: { name: 'Risk Management', type: 'danger' },
+      pipeline: { name: 'Pipeline', type: 'default' }
+    };
+
+    return Object.entries(this.summary.by_category).map(([key, count]) => ({
+      ...(categoryMap[key] || { name: key, type: 'default' }),
+      count
+    }));
+  }
 }

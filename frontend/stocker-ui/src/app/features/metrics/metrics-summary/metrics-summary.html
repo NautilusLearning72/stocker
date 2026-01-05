@@ -1,42 +1,46 @@
-<div class="summary-container relative">
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-overlay">
-    <mat-spinner diameter="40"></mat-spinner>
+<div class="Box">
+  <div class="Box-header">
+    <h3 class="Box-title">System Activity Overview</h3>
   </div>
+  <div class="Box-body">
+    <!-- Loading overlay -->
+    <div *ngIf="loading" class="loading-overlay">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
 
-  <!-- Summary Cards Grid -->
-  <div class="cards-grid grid gap-4 md:grid-cols-2 xl:grid-cols-4" *ngIf="summary">
-    <mat-card *ngFor="let card of cards" class="summary-card flex items-center gap-3" [ngClass]="card.colorClass">
-      <div class="card-icon">
-        <mat-icon>{{ card.icon }}</mat-icon>
-      </div>
-      <div class="card-content">
-        <div class="card-label">
-          {{ card.label }}
-          <mat-icon
-            class="help-icon"
-            [matTooltip]="card.tooltip"
-            matTooltipPosition="above"
-            matTooltipClass="metrics-tooltip">
-            help_outline
-          </mat-icon>
+    <div class="metrics-grid">
+      <div *ngFor="let metric of getMetrics()" class="metric-stat-card">
+        <div class="stat-header">
+          <span class="stat-label">{{ metric.label }}</span>
+          <span *ngIf="metric.badge" class="badge" [class]="'badge-' + metric.badge">
+            {{ metric.badgeText }}
+          </span>
         </div>
-        <div class="card-value">{{ card.value }}</div>
+        <div class="stat-value">{{ metric.value }}</div>
+        <div *ngIf="metric.help" class="stat-help">
+          <mat-icon class="help-icon">help_outline</mat-icon>
+          <span class="help-text">{{ metric.help }}</span>
+        </div>
       </div>
-    </mat-card>
-  </div>
+    </div>
 
-  <!-- Category Breakdown -->
-  <div class="category-breakdown flex flex-wrap items-center gap-2 border-t border-border pt-4 text-sm" *ngIf="summary && categoryBreakdown.length">
-    <span class="breakdown-label text-muted">By Category:</span>
-    <span *ngFor="let item of categoryBreakdown" class="category-chip" [ngClass]="'cat-' + item.category">
-      {{ item.category }}: {{ item.count }}
-    </span>
-  </div>
+    <!-- Category breakdown -->
+    <div class="category-breakdown mt-4" *ngIf="getCategories().length">
+      <h4 class="breakdown-title">By Category</h4>
+      <div class="category-chips">
+        <span *ngFor="let cat of getCategories()"
+              class="Counter"
+              [class]="'Counter--' + cat.type">
+          {{ cat.name }}: {{ cat.count }}
+        </span>
+      </div>
+    </div>
 
-  <!-- Empty State -->
-  <div *ngIf="!loading && !summary" class="empty-state flex flex-col items-center justify-center rounded-md border border-border bg-canvas p-8 text-muted">
-    <mat-icon>info</mat-icon>
-    <p>No metrics data available for the selected period.</p>
+    <!-- Empty State -->
+    <div *ngIf="!loading && !summary" class="empty-state">
+      <mat-icon class="empty-icon">info</mat-icon>
+      <p class="empty-text">No metrics data available</p>
+      <p class="empty-subtext">Try adjusting your time range</p>
+    </div>
   </div>
 </div>

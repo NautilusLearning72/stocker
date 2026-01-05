@@ -1,34 +1,40 @@
-<div class="metrics-dashboard mx-auto max-w-6xl space-y-8">
-  <!-- Page Header -->
-  <div class="page-header flex flex-wrap items-center justify-between gap-4">
-    <h1 class="page-title flex items-center gap-2 text-xl font-semibold text-text">
-      <mat-icon class="text-accent">analytics</mat-icon>
-      Metrics Dashboard
-    </h1>
+<div class="container-lg p-responsive">
+  <!-- Header -->
+  <div class="Subhead">
+    <h2 class="Subhead-heading">Metrics Dashboard</h2>
+    <div class="Subhead-description">System activity overview - key metrics showing what the trading system has been doing</div>
+  </div>
 
-    <div class="header-controls flex flex-wrap items-center gap-3">
-      <!-- Time Range Selector -->
-      <mat-form-field appearance="outline" class="time-select w-full sm:w-40">
-        <mat-label>Time Range</mat-label>
-        <mat-select [(ngModel)]="selectedHours" (selectionChange)="onTimeRangeChange()">
-          <mat-option *ngFor="let opt of hourOptions" [value]="opt.value">
-            {{ opt.label }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+  <!-- Controls -->
+  <div class="d-flex flex-items-center flex-justify-between mt-3 flex-wrap gap-3">
+    <!-- Time Range -->
+    <div class="BtnGroup">
+      <button
+        *ngFor="let opt of hourOptions"
+        class="BtnGroup-item"
+        [class.selected]="selectedHours === opt.value"
+        (click)="selectedHours = opt.value; onTimeRangeChange()">
+        {{ opt.label }}
+      </button>
+    </div>
 
-      <!-- Real-time Toggle -->
-      <div class="live-toggle flex items-center gap-2 rounded-full border border-border bg-canvas-subtle px-3 py-1 text-sm text-muted">
+    <div class="d-flex flex-items-center gap-2">
+      <!-- Live Toggle -->
+      <div class="live-toggle">
         <mat-slide-toggle
           [(ngModel)]="isLive"
           (change)="onLiveToggle()"
-          color="primary">
-          Live
+          color="primary"
+          class="live-switch">
+          <span class="live-label">Live</span>
         </mat-slide-toggle>
-        <span class="connection-indicator flex items-center" [ngClass]="connectionStatus">
+
+        <!-- Connection Status -->
+        <span *ngIf="isLive" class="badge connection-badge" [class]="'badge-' + connectionStatus">
           <mat-icon *ngIf="connectionStatus === 'connected'">wifi</mat-icon>
           <mat-icon *ngIf="connectionStatus === 'connecting'" class="spinning">sync</mat-icon>
           <mat-icon *ngIf="connectionStatus === 'disconnected'">wifi_off</mat-icon>
+          {{ connectionStatus }}
         </span>
       </div>
 
@@ -37,49 +43,34 @@
         mat-icon-button
         (click)="refresh()"
         [disabled]="loadingSummary || loadingEvents"
-        matTooltip="Refresh data">
+        matTooltip="Refresh data"
+        class="refresh-btn">
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
   </div>
 
   <!-- Summary Section -->
-  <section class="section summary-section">
-    <div class="section-header space-y-1">
-      <h2 class="text-lg font-semibold text-text">System Activity Overview</h2>
-      <p class="help-text flex flex-wrap items-center gap-1 text-sm text-muted">
-        Key metrics showing what the trading system has been doing. Hover over the
-        <mat-icon class="inline-icon">help_outline</mat-icon> icons for explanations.
-      </p>
-    </div>
-    <mat-card>
-      <mat-card-content>
-        <app-metrics-summary
-          [summary]="summary"
-          [loading]="loadingSummary">
-        </app-metrics-summary>
-      </mat-card-content>
-    </mat-card>
-  </section>
+  <div class="mt-4">
+    <app-metrics-summary
+      [summary]="summary"
+      [loading]="loadingSummary">
+    </app-metrics-summary>
+  </div>
 
   <!-- Event Feed Section -->
-  <section class="section events-section">
-    <div class="section-header space-y-1">
-      <h2 class="text-lg font-semibold text-text">Event Feed</h2>
-      <p class="help-text flex flex-wrap items-center gap-1 text-sm text-muted">
-        Detailed log of individual events. Use filters to focus on specific categories or symbols.
-        Hover over event names for descriptions.
-      </p>
+  <div class="mt-5">
+    <div class="Subhead">
+      <h2 class="Subhead-heading">Event Feed</h2>
+      <div class="Subhead-description">Detailed log of individual events - use filters to focus on specific categories or symbols</div>
     </div>
-    <mat-card>
-      <mat-card-content>
-        <app-event-feed
-          [events]="events"
-          [loading]="loadingEvents"
-          [isLive]="isLive"
-          (filtersChanged)="onFiltersChange($event)">
-        </app-event-feed>
-      </mat-card-content>
-    </mat-card>
-  </section>
+    <div class="Box mt-3">
+      <app-event-feed
+        [events]="events"
+        [loading]="loadingEvents"
+        [isLive]="isLive"
+        (filtersChanged)="onFiltersChange($event)">
+      </app-event-feed>
+    </div>
+  </div>
 </div>

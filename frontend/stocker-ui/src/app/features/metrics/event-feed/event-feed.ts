@@ -130,6 +130,18 @@ export class EventFeed implements OnInit {
     return `cat-${category}`;
   }
 
+  getCategoryColor(category: string): string {
+    const colorMap: Record<string, string> = {
+      signal: 'primary',
+      exit: 'warning',
+      diversification: 'primary',
+      order: 'success',
+      risk: 'danger',
+      pipeline: 'default'
+    };
+    return colorMap[category] || 'default';
+  }
+
   getEventDescription(eventType: string): string {
     return this.eventDescriptions[eventType] || eventType.replace(/_/g, ' ');
   }

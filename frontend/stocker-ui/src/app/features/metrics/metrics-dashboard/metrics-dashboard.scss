@@ -1,20 +1,129 @@
-.connection-indicator {
+// GitHub Primer utilities
+.container-lg {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.p-responsive {
+  padding: 24px;
+}
+
+.mt-3 { margin-top: 16px !important; }
+.mt-4 { margin-top: 24px !important; }
+.mt-5 { margin-top: 32px !important; }
+
+.d-flex { display: flex !important; }
+.flex-items-center { align-items: center !important; }
+.flex-justify-between { justify-content: space-between !important; }
+.flex-wrap { flex-wrap: wrap !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 16px !important; }
+
+// GitHub Subhead component
+.Subhead {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border-muted);
+}
+
+.Subhead-heading {
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--color-fg-default);
+  margin: 0;
+}
+
+.Subhead-description {
+  font-size: 14px;
+  color: var(--color-fg-muted);
+}
+
+// GitHub Box component
+.Box {
+  background: var(--color-canvas-subtle);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+// GitHub Button Group
+.BtnGroup {
+  display: inline-flex;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-btn-border);
+  overflow: hidden;
+}
+
+.BtnGroup-item {
+  position: relative;
+  background: var(--color-btn-bg);
+  color: var(--color-fg-default);
+  border: none;
+  border-right: 1px solid var(--color-btn-border);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:last-child {
+    border-right: none;
+  }
+
+  &:hover {
+    background: var(--color-btn-hover-bg);
+  }
+
+  &.selected {
+    background: var(--color-accent-emphasis);
+    color: #ffffff;
+    font-weight: 600;
+  }
+}
+
+// Live toggle
+.live-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.live-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-fg-default);
+}
+
+// Connection badge
+.connection-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  text-transform: capitalize;
+
   mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
   }
 
-  &.connected mat-icon {
-    color: var(--color-success);
+  &.badge-connected {
+    background: var(--color-success-muted);
+    color: var(--color-success-fg);
   }
 
-  &.connecting mat-icon {
-    color: var(--color-warning);
+  &.badge-connecting {
+    background: var(--color-warning-muted);
+    color: var(--color-warning-fg);
   }
 
-  &.disconnected mat-icon {
-    color: var(--color-muted);
+  &.badge-disconnected {
+    background: var(--color-canvas-inset);
+    color: var(--color-fg-muted);
+    border: 1px solid var(--color-border-default);
   }
 }
 
@@ -31,9 +140,31 @@
   }
 }
 
-.help-text .inline-icon {
-  font-size: 14px;
-  width: 14px;
-  height: 14px;
-  vertical-align: middle;
+// Refresh button
+.refresh-btn {
+  color: var(--color-fg-muted);
+
+  &:hover:not([disabled]) {
+    color: var(--color-fg-default);
+    background: var(--color-btn-hover-bg);
+  }
+
+  &[disabled] {
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 768px) {
+  .p-responsive {
+    padding: 16px;
+  }
+
+  .Subhead-heading {
+    font-size: 20px;
+  }
+
+  .BtnGroup-item {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
 }
