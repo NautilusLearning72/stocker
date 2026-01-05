@@ -1,16 +1,18 @@
 <div class="fundamentals-tab space-y-4">
-  <div class="no-data flex items-center justify-center rounded-md border border-border bg-canvas p-8 text-sm text-muted" *ngIf="!metrics">
+  <div class="no-data flex items-center justify-center rounded-md border border-border bg-canvas p-8 text-sm text-muted"
+    *ngIf="!metrics">
     <p>No fundamental data available for this symbol.</p>
   </div>
 
   <div class="sections grid gap-4 md:grid-cols-2" *ngIf="metrics">
-    <mat-card *ngFor="let section of getSections()" class="section-card">
+    <mat-card *ngFor="let section of sections" class="section-card">
       <mat-card-content>
         <h3 class="section-title text-sm font-semibold text-text">{{ section.title }}</h3>
         <div class="metrics-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div class="metric-item" *ngFor="let item of section.metrics">
             <app-metric-tooltip [metric]="item.key"></app-metric-tooltip>
-            <div class="metric-value text-lg font-semibold text-text">{{ formatValue(item) }}</div>
+            <div class="metric-value text-lg font-semibold text-text" [ngClass]="getColorClass(item)">{{
+              formatValue(item) }}</div>
           </div>
         </div>
       </mat-card-content>

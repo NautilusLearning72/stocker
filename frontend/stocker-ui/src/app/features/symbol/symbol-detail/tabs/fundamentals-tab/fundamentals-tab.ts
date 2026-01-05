@@ -1,9 +1,10 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 
 import { InstrumentMetrics } from '../../../../../core/services/symbol-detail.service';
 import { MetricTooltip } from '../../../../../shared/components/metric-tooltip/metric-tooltip';
+import { METRIC_THRESHOLDS, MetricThreshold } from './metric-thresholds';
 
 interface MetricItem {
   key: string;
@@ -23,13 +24,23 @@ interface MetricSection {
   templateUrl: './fundamentals-tab.html',
   styleUrl: './fundamentals-tab.scss',
 })
-export class FundamentalsTab {
+export class FundamentalsTab implements OnChanges {
   @Input() metrics: InstrumentMetrics | null | undefined;
+  sections: MetricSection[] = [];
 
-  getSections(): MetricSection[] {
-    if (!this.metrics) return [];
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['metrics']) {
+      this.updateSections();
+    }
+  }
 
-    return [
+  private updateSections(): void {
+    if (!this.metrics) {
+      this.sections = [];
+      return;
+    }
+
+    this.sections = [
       {
         title: 'Valuation',
         metrics: [
@@ -113,5 +124,30 @@ export class FundamentalsTab {
     if (value >= 1e6) return '$' + (value / 1e6).toFixed(2) + 'M';
     if (value >= 1e3) return (value / 1e3).toFixed(2) + 'K';
     return value.toFixed(2);
+  }
+
+  getColorClass(item: MetricItem): string {
+    if (item.value == null) return '';
+
+    const threshold = METRIC_THRESHOLDS[item.key];
+    if (!threshold) return '';
+
+    const val = item.value;
+    const { type, good, bad } = threshold;
+
+    if (type === 'higherIsBetter') {
+      if (val >= good) return 'val-good';
+      if (val <= bad) return 'val-bad';
+    } else if (type === 'lowerIsBetter') {
+      if (val <= good) return 'val-good';
+      if (val >= bad) return 'val-bad';
+    } else if (type === 'range') {
+      // For Beta: Good is near 1 (0.8-1.2?), Bad is high (>1.5) or very low?
+      // Simplified: Just use simple thresholds from config
+      if (val <= good) return 'val-good'; // e.g. < 1.0 safe
+      if (val >= bad) return 'val-bad';   // > 1.5 volatile
+    }
+
+    return '';
   }
 }

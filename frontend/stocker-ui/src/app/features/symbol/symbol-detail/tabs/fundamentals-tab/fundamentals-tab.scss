@@ -1,26 +1,7 @@
-.section-card {
-  mat-card-content {
-    padding: 20px !important;
-  }
+.val-good {
+  color: var(--color-success-fg) !important;
 }
 
-.section-title {
-  margin: 0 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.metric-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.metric-value {
-  font-family: var(--font-mono);
-}
-
-.data-note {
-  text-align: center;
-  padding: 8px 0;
+.val-bad {
+  color: var(--color-danger-fg) !important;
 }
