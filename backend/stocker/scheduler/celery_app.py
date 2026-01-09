@@ -59,6 +59,10 @@ app.conf.beat_schedule = {
             day_of_week="mon-fri",
         ),
     },
+    "retry-pending-orders": {
+        "task": "stocker.tasks.order_retry.retry_pending_orders",
+        "schedule": crontab(minute="*/5"),
+    },
     "refresh-dynamic-universe": {
         "task": "stocker.tasks.universe_refresh.refresh_dynamic_universe",
         "schedule": crontab(

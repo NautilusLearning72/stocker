@@ -2,8 +2,9 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from alpaca.common.exceptions import APIError
 from alpaca.data.historical import StockHistoricalDataClient
@@ -25,6 +26,7 @@ from stocker.models.order import Order
 from stocker.stream_consumers.base import BaseStreamConsumer
 
 logger = logging.getLogger(__name__)
+ET_TZ = ZoneInfo("America/New_York")
 
 class BrokerConsumer(BaseStreamConsumer):
     """
@@ -40,7 +42,7 @@ class BrokerConsumer(BaseStreamConsumer):
             consumer_group="brokers"
         )
         self.mode = settings.BROKER_MODE # 'paper' or 'live'
-        self.execution_type = settings.ORDER_EXECUTION_TYPE  # 'moo' or 'market'
+        self.execution_type = settings.ORDER_EXECUTION_TYPE  # 'moo', 'market', or 'auto'
 
         # Initialize Alpaca Trading Client
         self.trading_client = TradingClient(
@@ -167,25 +169,48 @@ class BrokerConsumer(BaseStreamConsumer):
                 return False, 0.0, "Quantity too small for integer order"
             return True, float(int_qty), "ok"
 
-    def _is_market_open(self) -> tuple[bool, str]:
-        """
-        Check if the market is currently open for trading.
+    def _is_time_in_window(self, current: time, start: time, end: time) -> bool:
+        if start <= end:
+            return start <= current < end
+        return current >= start or current < end
 
-        Returns:
-            (is_open, status_message)
-        """
+    def _is_market_open_fallback(self, now_et: datetime) -> bool:
+        if now_et.weekday() >= 5:
+            return False
+        open_time = time(9, 30)
+        close_time = time(16, 0)
+        current = now_et.time()
+        return open_time <= current < close_time
+
+    def _get_market_context(self) -> tuple[datetime, bool, str]:
+        now_et = datetime.now(ET_TZ)
         try:
             clock = self.trading_client.get_clock()
-            if clock.is_open:
-                return True, "Market is open"
-            else:
-                next_open = clock.next_open.strftime("%Y-%m-%d %H:%M:%S %Z")
-                next_close = clock.next_close.strftime("%Y-%m-%d %H:%M:%S %Z")
-                return False, f"Market closed. Next open: {next_open}, Next close: {next_close}"
+            timestamp = getattr(clock, "timestamp", None)
+            if timestamp is not None:
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=UTC)
+                now_et = timestamp.astimezone(ET_TZ)
+            if getattr(clock, "is_open", False):
+                return now_et, True, "Market is open"
+            next_open = getattr(clock, "next_open", None)
+            next_close = getattr(clock, "next_close", None)
+            if next_open and next_close:
+                next_open_str = next_open.strftime("%Y-%m-%d %H:%M:%S %Z")
+                next_close_str = next_close.strftime("%Y-%m-%d %H:%M:%S %Z")
+                return now_et, False, f"Market closed. Next open: {next_open_str}, Next close: {next_close_str}"
         except Exception as e:
             logger.warning(f"Failed to check market hours: {e}")
-            # Default to allowing order attempt if we can't check
-            return True, "Unable to verify market hours"
+        is_open = self._is_market_open_fallback(now_et)
+        status = "Market open (fallback)" if is_open else "Market closed (fallback)"
+        return now_et, is_open, status
+
+    def _is_opg_window(self, now_et: datetime) -> tuple[bool, str]:
+        start = time(settings.OPG_WINDOW_START_HOUR, settings.OPG_WINDOW_START_MINUTE)
+        end = time(settings.OPG_WINDOW_END_HOUR, settings.OPG_WINDOW_END_MINUTE)
+        in_window = self._is_time_in_window(now_et.time(), start, end)
+        status = f"OPG window {start.strftime('%H:%M')} - {end.strftime('%H:%M')} ET"
+        return in_window, status
 
     def _format_broker_rejection(self, error: APIError) -> str:
         payload = getattr(error, "error", None)
@@ -198,6 +223,16 @@ class BrokerConsumer(BaseStreamConsumer):
             except json.JSONDecodeError:
                 return raw
         return raw
+
+    async def _mark_order_pending(self, order_uuid: uuid.UUID, reason: str) -> None:
+        async with AsyncSessionLocal() as session:
+            stmt = select(Order).where(Order.order_id == order_uuid)
+            res = await session.execute(stmt)
+            o = res.scalar_one_or_none()
+            if o:
+                o.status = "PENDING"
+                await session.commit()
+                logger.debug(f"Order {order_uuid} set to PENDING ({reason})")
 
     async def process_message(self, message_id: str, data: dict[str, Any]) -> None:
         order_internal_id = data.get("order_id")
@@ -246,8 +281,10 @@ class BrokerConsumer(BaseStreamConsumer):
                 )
                 return
 
-            if order_record.status != "NEW":
-                logger.warning(f"Order {order_internal_id} is already {order_record.status}, skipping execution")
+            if order_record.status not in ("NEW", "PENDING"):
+                logger.warning(
+                    f"Order {order_internal_id} is already {order_record.status}, skipping execution"
+                )
                 return
 
             order_record.status = "PENDING_EXECUTION"
@@ -307,9 +344,43 @@ class BrokerConsumer(BaseStreamConsumer):
 
         # 3. Determine TimeInForce based on execution type and market hours
         #    Note: Alpaca requires whole shares for MOO (OPG) orders
-        market_open, market_status = self._is_market_open()
+        now_et, market_open, market_status = self._get_market_context()
+        in_opg_window, opg_status = self._is_opg_window(now_et)
 
-        if self.execution_type == "moo":
+        execution_type = self.execution_type
+        if execution_type == "auto":
+            if market_open:
+                execution_type = "market"
+            elif in_opg_window:
+                execution_type = "moo"
+            else:
+                logger.info(
+                    f"Deferring order for {symbol}: outside OPG window. {opg_status}. {market_status}"
+                )
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "opg_window_closed",
+                    qty,
+                    symbol=symbol,
+                    metadata={"status": opg_status, "side": side}
+                )
+                await self._mark_order_pending(order_uuid, "opg_window_closed")
+                return
+
+        if execution_type == "moo":
+            if not in_opg_window:
+                logger.warning(
+                    f"Cannot submit MOO for {symbol}: outside OPG window. {opg_status}"
+                )
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "opg_window_closed",
+                    qty,
+                    symbol=symbol,
+                    metadata={"status": opg_status, "side": side}
+                )
+                await self._mark_order_pending(order_uuid, "opg_window_closed")
+                return
             # Market-on-Open: use OPG (executes at next market open)
             # Alpaca constraint: OPG orders must use whole shares
             if self._is_fractional_qty(qty):
@@ -350,7 +421,9 @@ class BrokerConsumer(BaseStreamConsumer):
 
             time_in_force = TimeInForce.OPG
             if market_open:
-                logger.info(f"MOO order for {symbol} will execute at next open (market currently open)")
+                logger.info(
+                    f"MOO order for {symbol} will execute at next open (market currently open)"
+                )
             else:
                 logger.info(f"MOO order for {symbol} queued for next open. {market_status}")
         else:
@@ -364,13 +437,7 @@ class BrokerConsumer(BaseStreamConsumer):
                     symbol=symbol,
                     metadata={"status": market_status, "side": side}
                 )
-                async with AsyncSessionLocal() as session:
-                    stmt = select(Order).where(Order.order_id == order_uuid)
-                    res = await session.execute(stmt)
-                    o = res.scalar_one_or_none()
-                    if o:
-                        o.status = "PENDING"  # Will need manual retry or scheduled task
-                        await session.commit()
+                await self._mark_order_pending(order_uuid, "market_closed")
                 return
             time_in_force = TimeInForce.DAY
 

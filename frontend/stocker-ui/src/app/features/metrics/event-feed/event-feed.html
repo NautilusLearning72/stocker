@@ -2,48 +2,59 @@
   <div class="d-flex flex-items-center flex-justify-between flex-wrap gap-3">
     <div class="d-flex flex-items-center gap-3 flex-wrap">
       <!-- Category filter -->
-      <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>Category</mat-label>
-        <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
-          <mat-option value="">All Categories</mat-option>
-          <mat-option *ngFor="let cat of getCategoryKeys()" [value]="cat">
+      <div class="form-group">
+        <label for="category-select" class="form-label">Category</label>
+        <select
+          id="category-select"
+          class="form-select"
+          [(ngModel)]="selectedCategory"
+          (change)="onCategoryChange()">
+          <option value="">All Categories</option>
+          <option *ngFor="let cat of getCategoryKeys()" [value]="cat">
             {{ cat }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+          </option>
+        </select>
+      </div>
 
       <!-- Event type filter -->
-      <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>Event Type</mat-label>
-        <mat-select
+      <div class="form-group">
+        <label for="event-type-select" class="form-label">Event Type</label>
+        <select
+          id="event-type-select"
+          class="form-select"
           [(ngModel)]="selectedEventType"
-          (selectionChange)="onEventTypeChange()"
+          (change)="onEventTypeChange()"
           [disabled]="!selectedCategory">
-          <mat-option value="">All Types</mat-option>
-          <mat-option *ngFor="let type of eventTypeOptions" [value]="type">
+          <option value="">All Types</option>
+          <option *ngFor="let type of eventTypeOptions" [value]="type">
             {{ type }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+          </option>
+        </select>
+      </div>
 
       <!-- Symbol filter -->
-      <mat-form-field appearance="outline" class="filter-field symbol-field">
-        <mat-label>Symbol</mat-label>
+      <div class="form-group">
+        <label for="symbol-input" class="form-label">Symbol</label>
         <input
-          matInput
+          id="symbol-input"
+          type="text"
+          class="form-input"
           [(ngModel)]="symbolFilter"
           (change)="onSymbolFilterChange()"
           placeholder="e.g., AAPL">
-      </mat-form-field>
+      </div>
 
       <!-- Clear button -->
-      <button
-        mat-stroked-button
-        (click)="clearFilters()"
-        [disabled]="!selectedCategory && !selectedEventType && !symbolFilter"
-        class="btn-sm">
-        Clear
-      </button>
+      <div class="form-group">
+        <label class="form-label form-label-empty">&nbsp;</label>
+        <button
+          type="button"
+          class="btn btn-sm"
+          (click)="clearFilters()"
+          [disabled]="!selectedCategory && !selectedEventType && !symbolFilter">
+          Clear
+        </button>
+      </div>
     </div>
 
     <!-- Live indicator -->
