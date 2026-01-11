@@ -13,6 +13,11 @@ from stocker.models.trading_universe import TradingUniverse
 from stocker.models.instrument_universe import InstrumentUniverse
 from stocker.models.instrument_universe_member import InstrumentUniverseMember
 from stocker.models.strategy_universe import StrategyUniverse
+from stocker.models.derived_metric_definition import DerivedMetricDefinition
+from stocker.models.derived_metric_value import DerivedMetricValue
+from stocker.models.derived_metric_rule_set import DerivedMetricRuleSet
+from stocker.models.derived_metric_rule import DerivedMetricRule
+from stocker.models.derived_metric_score import DerivedMetricScore
 
 # Strategy & Portfolio
 from stocker.models.signal import Signal
@@ -52,6 +57,11 @@ __all__ = [
     "InstrumentUniverse",
     "InstrumentUniverseMember",
     "StrategyUniverse",
+    "DerivedMetricDefinition",
+    "DerivedMetricValue",
+    "DerivedMetricRuleSet",
+    "DerivedMetricRule",
+    "DerivedMetricScore",
     "Signal",
     "TargetExposure",
     "Order",

@@ -19,6 +19,14 @@ app.conf.beat_schedule = {
             minute=settings.MARKET_CLOSE_MINUTE,
         ),
     },
+    "ingest-derived-metrics": {
+        "task": "stocker.tasks.derived_metrics.ingest_derived_metrics",
+        "schedule": crontab(
+            hour=17,
+            minute=30,
+            day_of_week="mon-fri",
+        ),
+    },
     "ingest-instrument-metrics": {
         "task": "stocker.tasks.instrument_metrics.ingest_instrument_metrics",
         "schedule": crontab(
@@ -40,6 +48,14 @@ app.conf.beat_schedule = {
             day_of_week=settings.SENTIMENT_REFRESH_DAY,
             hour=settings.SENTIMENT_REFRESH_HOUR,
             minute=settings.SENTIMENT_REFRESH_MINUTE,
+        ),
+    },
+    "compute-derived-metric-scores": {
+        "task": "stocker.tasks.derived_metrics.compute_metric_scores",
+        "schedule": crontab(
+            hour=19,
+            minute=15,
+            day_of_week="mon-fri",
         ),
     },
     # MOO order fill sync - runs after market open to capture fills

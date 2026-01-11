@@ -63,6 +63,7 @@ class StreamNames:
     TARGETS = "targets"
     ORDERS = "orders"
     FILLS = "fills"
+    DERIVED_METRICS = "derived-metrics"
     PORTFOLIO_STATE = "portfolio-state"
     ALERTS = "alerts"
     METRICS = "metrics"  # Observability metrics stream

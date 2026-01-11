@@ -78,6 +78,7 @@ from stocker.api.orders import router as orders_router
 from stocker.api.universes import router as universes_router
 from stocker.api.instruments import router as instruments_router
 from stocker.api.metrics import router as metrics_router
+from stocker.api.metrics_derived import router as metrics_derived_router
 from stocker.api.admin import router as admin_router
 from stocker.api.audit import router as audit_router
 from stocker.api.performance import router as performance_router
@@ -89,6 +90,7 @@ app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
 app.include_router(universes_router, prefix="/api/v1/universes", tags=["universes"])
 app.include_router(instruments_router, prefix="/api/v1/instruments", tags=["instruments"])
 app.include_router(metrics_router, prefix="/api/v1/metrics", tags=["metrics"])
+app.include_router(metrics_derived_router, prefix="/api/v1/metrics/derived", tags=["metrics"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(audit_router, prefix="/api/v1/audit", tags=["audit"])
 app.include_router(performance_router, prefix="/api/v1/performance", tags=["performance"])

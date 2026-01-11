@@ -139,6 +139,9 @@ echo -e "\n${YELLOW}🔌 Starting stream consumers...${NC}"
 poetry run python -m stocker.stream_consumers.signal_consumer > logs/signal_consumer.log 2>&1 &
 echo "  ✓ Signal Consumer (PID: $!)"
 
+poetry run python -m stocker.stream_consumers.derived_metrics_consumer > logs/derived_metrics_consumer.log 2>&1 &
+echo "  ✓ Derived Metrics Consumer (PID: $!)"
+
 poetry run python -m stocker.stream_consumers.portfolio_consumer > logs/portfolio_consumer.log 2>&1 &
 echo "  ✓ Portfolio Consumer (PID: $!)"
 
@@ -176,6 +179,22 @@ from stocker.tasks.market_data import ingest_market_data
 # 4. Publish to 'market-bars' stream to trigger signal generation
 result = ingest_market_data()
 print(f'✓ Market data ingestion completed: {result}')
+"
+
+# Compute derived metrics for dashboard screening
+echo -e "\n${YELLOW}📈 Computing derived metrics...${NC}"
+poetry run python -c "
+from stocker.tasks.derived_metrics import ingest_derived_metrics
+result = ingest_derived_metrics()
+print(f'✓ Derived metrics ingestion completed: {result}')
+"
+
+# Compute composite metric scores if rule sets exist
+echo -e "\n${YELLOW}🧮 Computing derived metric scores...${NC}"
+poetry run python -c "
+from stocker.tasks.derived_metrics import compute_metric_scores
+result = compute_metric_scores()
+print(f'✓ Derived metric scores completed: {result}')
 "
 
 # Sync any pending MOO order fills

@@ -153,6 +153,12 @@ class Settings(BaseSettings):
     SENTIMENT_RATE_LIMIT_PER_SEC: float = 2.0
     SENTIMENT_MAX_SYMBOLS: int = 0
 
+    # Derived Metrics
+    DERIVED_METRICS_LOOKBACK_DAYS: int = 300
+    DERIVED_METRICS_SENTIMENT_LOOKBACK_DAYS: int = 90
+    DERIVED_METRICS_USE_GLOBAL_UNIVERSE: bool = True
+    DERIVED_METRICS_CALC_VERSION: str = "v1"
+
     # Broker Configuration
     BROKER_MODE: Literal["paper", "live"] = "paper"
     ALPACA_API_KEY: str = ""
