@@ -182,7 +182,11 @@ class Settings(BaseSettings):
     PORTFOLIO_SYNC_ORDER_LIMIT: int = 500
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:4200", "http://localhost:8000"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:4200",
+        "http://web.localhost:4200",
+        "http://localhost:8000",
+    ]
 
     @property
     def sync_database_url(self) -> str:

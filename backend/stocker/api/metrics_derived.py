@@ -15,6 +15,7 @@ from stocker.models.derived_metric_rule import DerivedMetricRule
 from stocker.models.derived_metric_score import DerivedMetricScore
 from stocker.models.instrument_info import InstrumentInfo
 from stocker.models.instrument_universe_member import InstrumentUniverseMember
+from stocker.services.derived_metric_seed_service import DerivedMetricSeedService
 
 router = APIRouter()
 
@@ -140,6 +141,13 @@ class ScoresResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class DerivedMetricsStatus(BaseModel):
+    latest_values_date: Optional[date] = None
+    latest_scores_date: Optional[date] = None
+    latest_values_updated_at: Optional[datetime] = None
+    latest_scores_updated_at: Optional[datetime] = None
 
 
 class FilterClause(BaseModel):
@@ -371,6 +379,28 @@ async def list_metric_values(
     ]
 
 
+@router.get("/status", response_model=DerivedMetricsStatus)
+async def get_metrics_status(
+    db: AsyncSession = Depends(get_db),
+):
+    values_date_stmt = select(func.max(DerivedMetricValue.as_of_date))
+    scores_date_stmt = select(func.max(DerivedMetricScore.as_of_date))
+    values_updated_stmt = select(func.max(DerivedMetricValue.updated_at))
+    scores_updated_stmt = select(func.max(DerivedMetricScore.updated_at))
+
+    values_date_result = await db.execute(values_date_stmt)
+    scores_date_result = await db.execute(scores_date_stmt)
+    values_updated_result = await db.execute(values_updated_stmt)
+    scores_updated_result = await db.execute(scores_updated_stmt)
+
+    return DerivedMetricsStatus(
+        latest_values_date=values_date_result.scalar_one_or_none(),
+        latest_scores_date=scores_date_result.scalar_one_or_none(),
+        latest_values_updated_at=values_updated_result.scalar_one_or_none(),
+        latest_scores_updated_at=scores_updated_result.scalar_one_or_none(),
+    )
+
+
 @router.get("/rule-sets", response_model=list[RuleSetResponse])
 async def list_rule_sets(
     active: Optional[bool] = Query(default=None),
@@ -380,7 +410,13 @@ async def list_rule_sets(
     if active is not None:
         stmt = stmt.where(DerivedMetricRuleSet.is_active.is_(active))
     result = await db.execute(stmt.order_by(DerivedMetricRuleSet.name.asc()))
-    return result.scalars().all()
+    rule_sets = result.scalars().all()
+    if not rule_sets:
+        seeded = await DerivedMetricSeedService().seed_defaults(db)
+        if seeded > 0:
+            result = await db.execute(stmt.order_by(DerivedMetricRuleSet.name.asc()))
+            rule_sets = result.scalars().all()
+    return rule_sets
 
 
 @router.post("/rule-sets", response_model=RuleSetResponse, status_code=status.HTTP_201_CREATED)

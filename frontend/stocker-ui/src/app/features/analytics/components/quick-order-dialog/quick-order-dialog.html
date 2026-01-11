@@ -1,0 +1,61 @@
+<h2 mat-dialog-title>Quick Order</h2>
+
+<div mat-dialog-content class="dialog-content">
+  <div class="symbol-pill">Symbol: <span class="symbol">{{ symbol }}</span></div>
+
+  <mat-form-field appearance="outline" class="dialog-field">
+    <mat-label>Side</mat-label>
+    <mat-select [(ngModel)]="side">
+      <mat-option value="BUY">Buy</mat-option>
+      <mat-option value="SELL">Sell</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="dialog-field">
+    <mat-label>Order Type</mat-label>
+    <mat-select [(ngModel)]="orderType">
+      <mat-option value="market">Market</mat-option>
+      <mat-option value="limit">Limit</mat-option>
+      <mat-option value="opg">OPG</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="dialog-field" *ngIf="orderType === 'limit'">
+    <mat-label>Limit Price</mat-label>
+    <input matInput type="number" [(ngModel)]="limitPrice" min="0" step="0.01">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="dialog-field">
+    <mat-label>Time In Force</mat-label>
+    <mat-select [(ngModel)]="timeInForce">
+      <mat-option value="day">Day</mat-option>
+      <mat-option value="gtc">GTC</mat-option>
+      <mat-option value="opg">OPG</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-button-toggle-group [(ngModel)]="quantityMode" class="mode-toggle">
+    <mat-button-toggle value="qty">Quantity</mat-button-toggle>
+    <mat-button-toggle value="notional">Notional</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  <mat-form-field appearance="outline" class="dialog-field" *ngIf="quantityMode === 'qty'">
+    <mat-label>Quantity</mat-label>
+    <input matInput type="number" [(ngModel)]="qty" min="0" step="1">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="dialog-field" *ngIf="quantityMode === 'notional'">
+    <mat-label>Notional</mat-label>
+    <input matInput type="number" [(ngModel)]="notional" min="0" step="1">
+  </mat-form-field>
+
+  <div class="error-text" *ngIf="errorMessage">{{ errorMessage }}</div>
+</div>
+
+<div mat-dialog-actions class="dialog-actions">
+  <button mat-stroked-button (click)="close()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="submit()" [disabled]="submitting">
+    <mat-spinner *ngIf="submitting" diameter="18"></mat-spinner>
+    <span *ngIf="!submitting">Submit Order</span>
+  </button>
+</div>

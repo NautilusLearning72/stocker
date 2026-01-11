@@ -175,6 +175,8 @@ class DerivedMetricScoreService:
             if low is None or high is None:
                 return False
             return low <= value <= high
+        if op == "any":
+            return True
         return True
 
     def _attach_ranks(

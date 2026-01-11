@@ -1,8 +1,8 @@
-# Derived Metrics UI PRD (Analytics)
+# Derived Metrics UI PRD (Analytics Area)
 
 ## 1. Summary
 
-Build a new "Analytics" component inside the Metrics area to help users discover investment opportunities using derived metrics (fundamental, technical, sentiment, quant, cross-domain). The UI provides a configurable table, rule-based scoring, and actions to create orders. It also links to deeper symbol pages and explains metrics via tooltips.
+Build a new top-level "Analytics" area with its own menu item (not a sub-component under Metrics) to help users discover investment opportunities using derived metrics (fundamental, technical, sentiment, quant, cross-domain). The UI provides a configurable table, rule-based scoring, and actions to create orders. It also links to deeper symbol pages and explains metrics via tooltips.
 
 This PRD aligns with the backend implementation that now stores derived metric values, scores, and rule sets, and computes daily rankings.
 
@@ -54,15 +54,16 @@ This PRD aligns with the backend implementation that now stores derived metric v
 - Inline filters, chips, and status indicators.
 - Clear tooltips and predictable keyboard navigation.
 
-## 7. Analytics Component Requirements
+## 7. Analytics Area Requirements
 
 ### 7.1 Core requirements
-1) Selection of predefined rule set.
-2) Configure / CRUD rules and rule sets.
-3) Search and filter (symbol, sector, category, metric thresholds).
-4) Table with row per symbol and sorting on score.
-5) Quick order popup (buy/sell, qty or notional) using Alpaca.
-6) Show any portfolio holding in the table.
+1) Analytics is a top-level menu item with its own route (e.g. `/analytics`), not nested under Metrics.
+2) Selection of predefined rule set.
+3) Configure / CRUD rules and rule sets.
+4) Search and filter (symbol, sector, category, metric thresholds).
+5) Table with row per symbol and sorting on score.
+6) Quick order popup (buy/sell, qty or notional) using Alpaca.
+7) Show any portfolio holding in the table.
 
 ### 7.2 Table behavior
 - Columns are user-configurable from metric catalog.
@@ -114,6 +115,8 @@ This PRD aligns with the backend implementation that now stores derived metric v
 
 ## 10. Required API Endpoints (Aligned with `/api/v1/*`)
 
+Analytics uses the derived metrics endpoints under `/api/v1/metrics/derived/*`. The existing `/api/v1/metrics/*` endpoints remain focused on system observability.
+
 ### Metric catalog and values
 - GET `/api/v1/metrics/derived/definitions`
   - Query: `category`, `active=true`, `version=v1`
@@ -162,6 +165,10 @@ This PRD aligns with the backend implementation that now stores derived metric v
     }
     ```
 
+### Freshness / status
+- GET `/api/v1/metrics/derived/status`
+  - Returns latest `as_of_date` for derived metric values and scores.
+
 ### Holdings / portfolio integration
 - GET `/api/v1/portfolio/holdings`
   - Query: `portfolio_id`, `as_of`
@@ -178,6 +185,8 @@ This PRD aligns with the backend implementation that now stores derived metric v
 
 ## 11. UI Components
 
+- AnalyticsNavItem: primary app nav entry that routes to Analytics.
+- AnalyticsLayout: top-level page shell for Analytics routes.
 - AnalyticsHeader: rule set selector, search bar, date selector.
 - RuleSetDrawer: CRUD UI for rule sets and rules.
 - MetricColumnPicker: multi-select of metric columns.
@@ -212,6 +221,7 @@ This PRD aligns with the backend implementation that now stores derived metric v
 
 ## 16. Acceptance Criteria
 
+- Analytics appears as a top-level menu item with its own route.
 - User can select a rule set and see ranked symbols.
 - User can add/remove columns from the metric table.
 - User can create and edit rule sets and see updated rankings.

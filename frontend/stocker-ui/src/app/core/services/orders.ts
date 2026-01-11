@@ -22,6 +22,16 @@ export interface Order {
   fills: Fill[];
 }
 
+export interface CreateOrderRequest {
+  symbol: string;
+  side: string;
+  qty?: number;
+  notional?: number;
+  type?: string;
+  time_in_force?: string;
+  limit_price?: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -38,5 +48,9 @@ export class OrdersService {
 
   getOrder(orderId: string): Observable<Order | null> {
     return this.http.get<Order | null>(`${this.baseUrl}/${orderId}`);
+  }
+
+  createOrder(payload: CreateOrderRequest): Observable<Order> {
+    return this.http.post<Order>(this.baseUrl, payload);
   }
 }
