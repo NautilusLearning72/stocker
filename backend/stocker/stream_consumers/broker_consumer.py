@@ -13,7 +13,7 @@ from alpaca.data.requests import StockLatestTradeRequest
 # We might need Alpaca Client here if execution is real
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
-from alpaca.trading.requests import MarketOrderRequest
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.future import select
 
@@ -212,6 +212,33 @@ class BrokerConsumer(BaseStreamConsumer):
         status = f"OPG window {start.strftime('%H:%M')} - {end.strftime('%H:%M')} ET"
         return in_window, status
 
+    def _get_latest_trade_price(self, symbol: str) -> float | None:
+        try:
+            request = StockLatestTradeRequest(symbol_or_symbols=symbol)
+            trades = self.data_client.get_stock_latest_trade(request)
+            trade = trades.get(symbol)
+            if trade is None:
+                logger.warning(f"No latest trade available for {symbol}")
+                return None
+            return float(trade.price)
+        except Exception as e:
+            logger.warning(f"Failed to fetch latest trade for {symbol}: {e}")
+            return None
+
+    def _get_extended_hours_limit_price(self, symbol: str, side: str) -> float | None:
+        last_price = self._get_latest_trade_price(symbol)
+        if last_price is None:
+            return None
+        buffer_bps = max(settings.EXTENDED_HOURS_LIMIT_BPS, 0.0)
+        buffer = buffer_bps / 10000.0
+        direction = side.upper()
+        if direction == "BUY":
+            price = last_price * (1 + buffer)
+        else:
+            price = last_price * (1 - buffer)
+        price = max(price, 0.01)
+        return round(price, 4)
+
     def _format_broker_rejection(self, error: APIError) -> str:
         payload = getattr(error, "error", None)
         if isinstance(payload, dict):
@@ -354,23 +381,16 @@ class BrokerConsumer(BaseStreamConsumer):
             elif in_opg_window:
                 execution_type = "moo"
             else:
-                logger.info(
-                    f"Deferring order for {symbol}: outside OPG window. {opg_status}. {market_status}"
-                )
-                metrics.emit(
-                    metrics.CATEGORY_ORDER,
-                    "opg_window_closed",
-                    qty,
-                    symbol=symbol,
-                    metadata={"status": opg_status, "side": side}
-                )
-                await self._mark_order_pending(order_uuid, "opg_window_closed")
-                return
+                execution_type = "limit_extended"
+
+        order_type_desc = "MARKET"
+        limit_price = None
+        wait_for_fill = True
 
         if execution_type == "moo":
             if not in_opg_window:
-                logger.warning(
-                    f"Cannot submit MOO for {symbol}: outside OPG window. {opg_status}"
+                logger.info(
+                    f"Deferring MOO order for {symbol}: outside OPG window. {opg_status}"
                 )
                 metrics.emit(
                     metrics.CATEGORY_ORDER,
@@ -420,16 +440,48 @@ class BrokerConsumer(BaseStreamConsumer):
                 )
 
             time_in_force = TimeInForce.OPG
+            order_type_desc = "MOO"
+            wait_for_fill = False
             if market_open:
                 logger.info(
                     f"MOO order for {symbol} will execute at next open (market currently open)"
                 )
             else:
                 logger.info(f"MOO order for {symbol} queued for next open. {market_status}")
+        elif execution_type == "limit_extended":
+            limit_price = self._get_extended_hours_limit_price(symbol, side)
+            if limit_price is None:
+                logger.info(
+                    f"Deferring extended-hours limit for {symbol}: "
+                    f"missing latest price. {market_status}"
+                )
+                metrics.emit(
+                    metrics.CATEGORY_ORDER,
+                    "limit_price_unavailable",
+                    qty,
+                    symbol=symbol,
+                    metadata={"side": side}
+                )
+                await self._mark_order_pending(order_uuid, "limit_price_unavailable")
+                return
+            time_in_force = TimeInForce.DAY
+            order_type_desc = "LIMIT_EXT"
+            wait_for_fill = False
+            logger.info(
+                f"Auto execution for {symbol}: submitting extended-hours limit at "
+                f"{limit_price:.4f}. {market_status}"
+            )
+            metrics.emit(
+                metrics.CATEGORY_ORDER,
+                "limit_extended_submitted",
+                qty,
+                symbol=symbol,
+                metadata={"limit_price": limit_price, "side": side}
+            )
         else:
             # Immediate market order: requires market to be open
             if not market_open:
-                logger.warning(f"Cannot execute immediate market order for {symbol}: {market_status}")
+                logger.info(f"Deferring market order for {symbol}: {market_status}")
                 metrics.emit(
                     metrics.CATEGORY_ORDER,
                     "market_closed",
@@ -440,6 +492,8 @@ class BrokerConsumer(BaseStreamConsumer):
                 await self._mark_order_pending(order_uuid, "market_closed")
                 return
             time_in_force = TimeInForce.DAY
+            order_type_desc = "MARKET"
+            wait_for_fill = True
 
         # 4. Execute with Broker
         broker_order_id = None
@@ -448,17 +502,28 @@ class BrokerConsumer(BaseStreamConsumer):
 
         try:
             # Submit order with appropriate TimeInForce
-            req = MarketOrderRequest(
-                symbol=symbol,
-                qty=qty,
-                side=OrderSide.BUY if side == "BUY" else OrderSide.SELL,
-                time_in_force=time_in_force
-            )
+            if order_type_desc == "LIMIT_EXT":
+                req = LimitOrderRequest(
+                    symbol=symbol,
+                    qty=qty,
+                    side=OrderSide.BUY if side == "BUY" else OrderSide.SELL,
+                    time_in_force=time_in_force,
+                    limit_price=limit_price,
+                    extended_hours=True
+                )
+            else:
+                req = MarketOrderRequest(
+                    symbol=symbol,
+                    qty=qty,
+                    side=OrderSide.BUY if side == "BUY" else OrderSide.SELL,
+                    time_in_force=time_in_force
+                )
 
             submitted_order = self.trading_client.submit_order(req)
             broker_order_id = str(submitted_order.id)
-            order_type_desc = "MOO" if time_in_force == TimeInForce.OPG else "MARKET"
-            logger.info(f"Submitted {order_type_desc} order {order_internal_id} to Alpaca: {broker_order_id}")
+            logger.info(
+                f"Submitted {order_type_desc} order {order_internal_id} to Alpaca: {broker_order_id}"
+            )
 
             # Immediately persist broker_order_id to Order
             async with AsyncSessionLocal() as session:
@@ -468,17 +533,17 @@ class BrokerConsumer(BaseStreamConsumer):
                 if o:
                     o.broker_order_id = broker_order_id
                     o.status = "SUBMITTED"
-                    o.type = "MOO" if time_in_force == TimeInForce.OPG else "MARKET"
+                    o.type = order_type_desc
                     await session.commit()
-                    logger.debug(f"Order {order_internal_id} submitted to broker: {broker_order_id}")
+                    logger.debug(
+                        f"Order {order_internal_id} submitted to broker: {broker_order_id}"
+                    )
 
             # 5. Handle fill based on order type
-            if time_in_force == TimeInForce.OPG:
-                # MOO orders won't fill until market open - don't wait
-                # A separate process (or webhook) will handle fill updates
+            if not wait_for_fill:
                 logger.info(
-                    f"MOO order {broker_order_id} queued for next open. "
-                    f"Fill will be processed when market opens."
+                    f"{order_type_desc} order {broker_order_id} queued. "
+                    "Fill will be processed asynchronously."
                 )
                 # Mark as ACCEPTED (queued) rather than waiting for fill
                 async with AsyncSessionLocal() as session:
@@ -486,22 +551,34 @@ class BrokerConsumer(BaseStreamConsumer):
                     res = await session.execute(stmt)
                     o = res.scalar_one_or_none()
                     if o:
-                        o.status = "ACCEPTED"  # Queued for next open
+                        o.status = "ACCEPTED"
                         await session.commit()
 
-                # Emit metric for visibility
-                metrics.emit(
-                    metrics.CATEGORY_ORDER,
-                    "moo_queued",
-                    qty,
-                    symbol=symbol,
-                    metadata={
-                        "broker_order_id": broker_order_id,
-                        "side": side,
-                        "execution_type": "moo"
-                    }
-                )
-                return  # Don't wait for fill - will be handled by fill sync task
+                if order_type_desc == "MOO":
+                    metrics.emit(
+                        metrics.CATEGORY_ORDER,
+                        "moo_queued",
+                        qty,
+                        symbol=symbol,
+                        metadata={
+                            "broker_order_id": broker_order_id,
+                            "side": side,
+                            "execution_type": "moo"
+                        }
+                    )
+                else:
+                    metrics.emit(
+                        metrics.CATEGORY_ORDER,
+                        "limit_extended_queued",
+                        qty,
+                        symbol=symbol,
+                        metadata={
+                            "broker_order_id": broker_order_id,
+                            "side": side,
+                            "limit_price": limit_price,
+                        }
+                    )
+                return  # Don't wait for fill - handled asynchronously
 
             # For immediate market orders, poll for fill
             execution_price, filled_qty = await self._wait_for_fill(

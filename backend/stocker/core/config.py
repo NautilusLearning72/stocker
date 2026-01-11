@@ -75,12 +75,13 @@ class Settings(BaseSettings):
     SLIPPAGE_BPS: float = 5.0
     COMMISSION_PER_TRADE: float = 1.0
     ALLOW_SHORT_SELLING: bool = True
-    ORDER_EXECUTION_TYPE: Literal["moo", "market", "auto"] = "moo"  # moo=Market-on-Open, market=immediate, auto=dynamic
+    ORDER_EXECUTION_TYPE: Literal["moo", "market", "auto"] = "auto"  # moo=Market-on-Open, market=immediate, auto=dynamic
     # Alpaca OPG submission window (ET)
     OPG_WINDOW_START_HOUR: int = 19
     OPG_WINDOW_START_MINUTE: int = 0
     OPG_WINDOW_END_HOUR: int = 9
     OPG_WINDOW_END_MINUTE: int = 28
+    EXTENDED_HOURS_LIMIT_BPS: float = 10.0
 
     # Fractional Sizing Settings
     FRACTIONAL_SIZING_ENABLED: bool = True

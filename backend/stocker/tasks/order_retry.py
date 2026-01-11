@@ -80,7 +80,7 @@ async def _retry_pending_orders_async() -> dict:
     elif execution_type == "market":
         allow_retry = market_open
     else:
-        allow_retry = market_open or in_opg_window
+        allow_retry = True
 
     if not allow_retry:
         logger.info(
