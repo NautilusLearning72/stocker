@@ -213,7 +213,7 @@
         <pre class="debug-json" *ngIf="lastScoresRequest">{{ lastScoresRequest | json }}</pre>
       </details>
 
-      <div class="table-container overflow-hidden rounded-md border border-border bg-canvas">
+      <div class="table-container overflow-x-auto rounded-md border border-border bg-canvas">
         <div class="loading-overlay" *ngIf="loadingScores">
           <mat-spinner diameter="36"></mat-spinner>
           <p>Loading analytics...</p>

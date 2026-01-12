@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+import math
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -18,6 +19,20 @@ from stocker.models.instrument_universe_member import InstrumentUniverseMember
 from stocker.services.derived_metric_seed_service import DerivedMetricSeedService
 
 router = APIRouter()
+
+
+def _to_finite_number(value: Decimal | float | int | None) -> Decimal | float | None:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return value if value.is_finite() else None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(numeric):
+        return None
+    return numeric
 
 
 class DerivedMetricDefinitionResponse(BaseModel):
@@ -208,6 +223,15 @@ async def _build_scores_response(
     page_size: int,
     columns: list[str],
 ) -> ScoresResponse:
+    if as_of_date is None:
+        latest_stmt = select(func.max(DerivedMetricScore.as_of_date)).where(
+            DerivedMetricScore.rule_set_id == rule_set_id
+        )
+        latest_result = await db.execute(latest_stmt)
+        as_of_date = latest_result.scalar_one_or_none()
+        if as_of_date is None:
+            return ScoresResponse(items=[], total=0, page=page, page_size=page_size)
+
     stmt = select(DerivedMetricScore).where(DerivedMetricScore.rule_set_id == rule_set_id)
 
     if as_of_date:
@@ -299,14 +323,14 @@ async def _build_scores_response(
                 for value in values_result.scalars().all():
                     metrics_by_symbol.setdefault(value.symbol, {})[
                         metric_ids[value.metric_id]
-                    ] = value.value
+                    ] = _to_finite_number(value.value)
 
     items = [
         ScoreRow(
             symbol=score.symbol,
-            score=score.score,
+            score=_to_finite_number(score.score),
             rank=score.rank,
-            percentile=score.percentile,
+            percentile=_to_finite_number(score.percentile),
             passes_required=score.passes_required,
             metrics=metrics_by_symbol.get(score.symbol, {}),
             holdings=None,

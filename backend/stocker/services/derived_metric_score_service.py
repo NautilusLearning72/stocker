@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Any
+import math
 
 import pandas as pd
 from sqlalchemy import select, func
@@ -201,14 +202,20 @@ class DerivedMetricScoreService:
 
         rows = []
         for row in df.itertuples(index=False):
+            score_value = None if pd.isna(row.score) else float(row.score)
+            if score_value is not None and not math.isfinite(score_value):
+                score_value = None
+            percentile_value = None if pd.isna(row.percentile) else float(row.percentile)
+            if percentile_value is not None and not math.isfinite(percentile_value):
+                percentile_value = None
             rows.append(
                 {
                     "rule_set_id": rule_set_id,
                     "symbol": row.symbol,
                     "as_of_date": target_date,
-                    "score": row.score,
+                    "score": score_value,
                     "rank": int(row.rank) if not pd.isna(row.rank) else None,
-                    "percentile": float(row.percentile) if not pd.isna(row.percentile) else None,
+                    "percentile": percentile_value,
                     "passes_required": bool(row.passes_required),
                 }
             )
@@ -218,9 +225,12 @@ class DerivedMetricScoreService:
         if value is None:
             return None
         try:
-            return float(value)
+            numeric = float(value)
         except (TypeError, ValueError):
             return None
+        if not math.isfinite(numeric):
+            return None
+        return numeric
 
     def _chunk_rows(self, rows: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
         if not rows:

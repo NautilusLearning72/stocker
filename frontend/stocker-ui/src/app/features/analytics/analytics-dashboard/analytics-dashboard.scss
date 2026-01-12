@@ -16,7 +16,8 @@
 }
 
 .analytics-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
 
   tr.analytics-row {
     cursor: pointer;
