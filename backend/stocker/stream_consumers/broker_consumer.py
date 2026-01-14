@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import uuid
+import time as time_module
 from datetime import UTC, datetime, time
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -56,6 +57,8 @@ class BrokerConsumer(BaseStreamConsumer):
             secret_key=settings.ALPACA_SECRET_KEY
         )
         self.fractional_enabled = settings.FRACTIONAL_SIZING_ENABLED
+        self._shortable_cache: dict[str, tuple[bool, float, str]] = {}
+        self._shortable_ttl_seconds = 300.0
 
     def _is_fractional_qty(self, qty: float) -> bool:
         """Check if quantity has a fractional component."""
@@ -98,6 +101,44 @@ class BrokerConsumer(BaseStreamConsumer):
         except Exception:
             return 0.0
 
+    def _check_shortable(self, symbol: str) -> tuple[bool, str]:
+        key = symbol.upper()
+        cached = self._shortable_cache.get(key)
+        now = time_module.monotonic()
+        if cached and (now - cached[1]) < self._shortable_ttl_seconds:
+            return cached[0], cached[2]
+        try:
+            asset = self.trading_client.get_asset(symbol)
+            shortable = bool(getattr(asset, "shortable", False))
+            tradable = bool(getattr(asset, "tradable", True))
+            easy_to_borrow = getattr(asset, "easy_to_borrow", None)
+            status = getattr(asset, "status", None)
+            if not tradable:
+                allowed = False
+                reason = "asset_not_tradable"
+            elif status and str(status).lower() != "active":
+                allowed = False
+                reason = f"asset_status_{status}"
+            elif not shortable:
+                allowed = False
+                reason = "asset_not_shortable"
+            elif easy_to_borrow is False:
+                allowed = False
+                reason = "asset_not_easy_to_borrow"
+            else:
+                allowed = True
+                reason = "ok"
+        except APIError as exc:
+            logger.warning("Failed to fetch asset metadata for %s: %s", symbol, exc)
+            allowed = False
+            reason = "asset_lookup_failed"
+        except Exception as exc:
+            logger.warning("Failed to fetch asset metadata for %s: %s", symbol, exc)
+            allowed = False
+            reason = "asset_lookup_failed"
+        self._shortable_cache[key] = (allowed, now, reason)
+        return allowed, reason
+
     def _validate_sell_order(self, symbol: str, qty: float) -> tuple[bool, float, str]:
         """
         Validate sell order against Alpaca position.
@@ -122,6 +163,10 @@ class BrokerConsumer(BaseStreamConsumer):
 
         # This would create/increase a short position
         # Alpaca requires whole shares for short selling
+        shortable, short_reason = self._check_shortable(symbol)
+        if not shortable:
+            logger.warning(f"Skipping {symbol} short: {short_reason}")
+            return False, 0.0, short_reason
 
         if self.fractional_enabled:
             # In fractional mode with short selling:

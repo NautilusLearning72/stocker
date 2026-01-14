@@ -225,10 +225,17 @@ async def _build_scores_response(
 ) -> ScoresResponse:
     if as_of_date is None:
         latest_stmt = select(func.max(DerivedMetricScore.as_of_date)).where(
-            DerivedMetricScore.rule_set_id == rule_set_id
+            DerivedMetricScore.rule_set_id == rule_set_id,
+            DerivedMetricScore.score.is_not(None),
         )
         latest_result = await db.execute(latest_stmt)
         as_of_date = latest_result.scalar_one_or_none()
+        if as_of_date is None:
+            fallback_stmt = select(func.max(DerivedMetricScore.as_of_date)).where(
+                DerivedMetricScore.rule_set_id == rule_set_id
+            )
+            fallback_result = await db.execute(fallback_stmt)
+            as_of_date = fallback_result.scalar_one_or_none()
         if as_of_date is None:
             return ScoresResponse(items=[], total=0, page=page, page_size=page_size)
 
